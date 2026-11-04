@@ -1,0 +1,20 @@
+## Interface: 50504
+## Title: Vínculo |cff9acd32- Diario de tu mascota|r
+## Notes: Guarda la historia de cada mascota de cazador: victorias, jefes, viajes, logros y una línea del tiempo de vuestra aventura.
+## Notes-esES: Guarda la historia de cada mascota de cazador: victorias, jefes, viajes, logros y una línea del tiempo de vuestra aventura.
+## Notes-enUS: Keeps the story of each hunter pet: victories, bosses, travels, achievements and a timeline of your adventure.
+## Author: Javier
+## Version: 0.1.2-mists
+## SavedVariables: VinculoDB
+## IconTexture: Interface\AddOns\Vinculo\Media\Icon
+## Category: Hunter
+
+Locale.lua
+Data.lua
+Zones.lua
+Skills.lua
+Foods.lua
+Core.lua
+Achievements.lua
+Extras.lua
+UI.lua

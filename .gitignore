@@ -1,0 +1,10 @@
+node_modules/
+releases/
+*.rar
+dist/
+_to_delete/
+.claude/settings.local.json
+.claude/
+art/
+docs/video/*.mp4
+docs/gemini/
