@@ -1045,6 +1045,19 @@ local function sortedByTime(map)
     return list
 end
 
+-- Continentes guardados antes del hotfix pueden estar en otro idioma: se unen por esta lista
+local CONTINENTS = {
+    { "Eastern Kingdoms", "Reinos del Este" }, { "Kalimdor", "Kalimdor" }, { "Outland", "Terrallende" },
+    { "Northrend", "Rasganorte" }, { "Pandaria", "Pandaria" }, { "Broken Isles", "Islas Abruptas" },
+}
+local continentByName = {}
+for _, p in ipairs(CONTINENTS) do continentByName[p[1]:lower()] = p; continentByName[p[2]:lower()] = p end
+local function continentName(name)
+    local p = continentByName[name:lower()]
+    if not p then return name end
+    return (locale:find("^es") and p[2]) or p[1]
+end
+
 local function travelsText(pet)
     local lines = {}
     local function section(title, map, suffix)
@@ -1063,7 +1076,7 @@ local function travelsText(pet)
         local cid = pet.zoneContinentID and pet.zoneContinentID[it.name]
         local info = cid and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(cid)
         if info and type(info.name) == "string" then c = info.name end -- nombre en el idioma actual
-        c = c or L.TRAVEL_OTHER
+        c = c and continentName(c) or L.TRAVEL_OTHER
         if not groups[c] then groups[c] = {}; order[#order + 1] = c end
         table.insert(groups[c], it)
     end

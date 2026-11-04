@@ -3,10 +3,9 @@
 ## 0.1.2
 
 ### Fixed
-- Journeys: continents are no longer duplicated after changing the game language.
+- Journeys: continents are no longer duplicated after changing the game language (this also merges older entries saved in the other language).
 
 ### Known issues
-- Zones visited before this version keep their old continent name until you visit them again.
 - If you change the game language, zone names may appear twice in Journeys.
 - Each beast has a single zone in the Bestiary, and the data is for Classic.
 - First run on WoW: Forever: some features (map button, feed badge) are still being checked.
@@ -14,10 +13,9 @@
 ## 0.1.2 (español)
 
 ### Corregido
-- Viajes: los continentes ya no se duplican al cambiar el idioma del juego.
+- Viajes: los continentes ya no se duplican al cambiar el idioma del juego (también une los datos antiguos guardados en el otro idioma).
 
 ### Problemas conocidos
-- Las zonas visitadas antes de esta versión mantienen su continente antiguo hasta que las pises otra vez.
 - Si cambias el idioma del juego, los nombres de zona pueden salir duplicados en Viajes.
 - Cada bestia tiene una sola zona en el Bestiario, y los datos son de Classic.
 - Primer uso en WoW: Forever: algunas funciones (botón del mapa, insignia de alimentar) aún se están comprobando.

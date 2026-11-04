@@ -99,7 +99,7 @@ WoW: Forever does not let addons read the combat log, so Vínculo counts **fight
 ## Good to know
 - Beast, zone, food and skill data are for Classic; WoW: Forever may have more, and they will grow with updates.
 - Available in English and Spanish.
-- Known issues: each beast has a single zone; if you change the game language, zone names may appear twice in Journeys; zones visited with an older version keep their old continent until you visit them again.
+- Known issues: each beast has a single zone; if you change the game language, zone names may appear twice in Journeys.
 - Found a bug? Leave a comment with the exact Lua error text (`/console scriptErrors 1`) and I'll fix it.
 
 *Fonts: IM Fell English and Caveat, SIL Open Font License.*
