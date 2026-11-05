@@ -4,7 +4,7 @@
 ## Notes-esES: Guarda la historia de cada mascota de cazador: victorias, jefes, viajes, logros y una línea del tiempo de vuestra aventura.
 ## Notes-enUS: Keeps the story of each hunter pet: victories, bosses, travels, achievements and a timeline of your adventure.
 ## Author: Javier
-## Version: 0.1.3-mists
+## Version: 0.1.4-mists
 ## SavedVariables: VinculoDB
 ## IconTexture: Interface\AddOns\Vinculo\Media\Icon
 ## Category: Hunter

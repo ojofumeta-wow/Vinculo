@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.1.4
+
+### Added
+- Beast alert is now a small on-screen panel with the family icon (never in combat; follows the alert options) instead of a chat line.
+
+### Fixed
+- Abandoning a pet now sticks: the sheet stays "Abandoned" instead of coming back as "Resting".
+- A retired pet called back with a new GUID reuses its sheet instead of creating a duplicate.
+- A pet is only counted as freshly tamed after a Tame Beast cast, no longer just because its loyalty is 1.
+- Weekly summary window: more room between title, numbers and zones.
+
+### Removed
+- Temporary debug log (`/vinculo debug`).
+
+## 0.1.4 (español)
+
+### Añadido
+- El aviso de bestia es ahora un panel pequeño en pantalla con el icono de la familia (nunca en combate; respeta las opciones de avisos) en vez de una línea de chat.
+
+### Arreglado
+- Abandonar una mascota ya se mantiene: la ficha queda «Abandonada» y no vuelve a «Descansando».
+- Una mascota retirada que se vuelve a llamar con otro GUID reutiliza su ficha, sin duplicarla.
+- Una mascota solo cuenta como recién domada tras lanzar Domar bestia, ya no por tener lealtad 1.
+- Ventana del resumen semanal: más espacio entre título, cifras y zonas.
+
+### Eliminado
+- Registro temporal de depuración (`/vinculo debug`).
+
 ## 0.1.3
 
 ### Added

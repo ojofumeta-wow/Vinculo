@@ -54,15 +54,6 @@ local lastTick
 local lastTameCast = 0
 local dismissedAt = 0
 
--- Diagnóstico temporal (/vinculo debug): hechizos lanzados, entradas y salidas de combate, y por qué se contó o no una victoria.
-local dbgLog = {}
-local function dbg(text)
-    dbgLog[#dbgLog + 1] = ("%.0f %s"):format(GetTime(), text)
-    if #dbgLog > 40 then table.remove(dbgLog, 1) end
-end
-
-ns.dbg = dbg
-
 -- GetItemInfo vive en C_Item en el cliente moderno; la global puede no existir en Forever.
 function ns.ItemInfo(id)
     local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
@@ -186,16 +177,20 @@ function ns:AddPet(key, name, family, level)
 end
 
 -- Busca una ficha no retirada con ese nombre y familia (para unir la del establo con la invocada).
-function ns:FindPetByName(name, family, skipKey)
+-- withRetired: si no hay otra, vale una retirada (no abandonada): se vuelve a llamar con otro GUID.
+function ns:FindPetByName(name, family, skipKey, withRetired)
     if not name then return end
+    local retiredMatch
     for key, pet in pairs(charDB.pets) do
         -- La familia se compara por su clave, no por el texto: si cambias el idioma del cliente ("Lobo" / "Wolf"),
         -- seguiría siendo la misma mascota.
-        if key ~= skipKey and not pet.retired and pet.name == name
+        if key ~= skipKey and pet.name == name and not pet.abandoned
             and (not family or not pet.family or pet.family == family or ns:FamilyKey(pet.family) == ns:FamilyKey(family)) then
-            return pet
+            if not pet.retired then return pet end
+            retiredMatch = retiredMatch or pet
         end
     end
+    if withRetired then return retiredMatch end
 end
 
 -- Cambia la clave de una ficha sin perder su sitio en la lista.
@@ -241,7 +236,6 @@ end
 
 -- "Abandonar mascota" la suelta para siempre: queda en el recuerdo, y ninguna mascota nueva la reactiva.
 function ns:PetAbandoned()
-    self.dbg("abandonar mascota (PetAbandon)")
     local pet = self:GetPet(self.activeKey or self.lastKey)
     if not pet or pet.abandoned then return end
     pet.abandoned, pet.retired = true, true
@@ -360,7 +354,7 @@ function ns:RefreshPet()
         local known = self:GetPet(charDB.lastKey)
         if not (known and not known.retired and known.name == name
             and (not family or not known.family or known.family == family or self:FamilyKey(known.family) == self:FamilyKey(family))) then
-            known = self:FindPetByName(name, family)
+            known = self:FindPetByName(name, family, nil, true)
         end
         if known then
             rekey(known, key)
@@ -371,12 +365,16 @@ function ns:RefreshPet()
         if not name then return end -- sin nombre todavía; se reintenta luego
         pet = self:AddPet(key, name, family, level)
         pet.loyalty = loyalty
-        local justTamed = (GetTime() - lastTameCast) < 120 or loyalty == 1
+        local justTamed = (GetTime() - lastTameCast) < 120
         pet.tamed = justTamed or nil
-        dbg(("mascota nueva: domada=%s, hace %.0f s del último Domar bestia, lealtad=%s"):format(tostring(justTamed), GetTime() - lastTameCast, tostring(loyalty)))
         self:Log(pet, justTamed and "EV_TAMED" or "EV_FIRST_SEEN", name, pet.metZone)
         if justTamed then self:CompleteWish(pet) end
         greet = justTamed and "tamed" or "hello"
+    elseif pet.abandoned then
+        -- La mascota abandonada aún existe un instante tras soltarla: no se reactiva.
+        if ns.activeKey == key then ns.activeKey = nil end
+        self:Changed()
+        return
     else
         if name and name ~= pet.name then
             self:Log(pet, "EV_RENAMED", name, pet.name)
@@ -549,7 +547,6 @@ end
 
 function events.PLAYER_REGEN_DISABLED()
     inCombat = true
-    dbg(("ENTRA: activeKey=%s mascota=%s"):format(tostring(ns.activeKey ~= nil), tostring(petExists())))
     if ns.activeKey and petExists() then
         combat = { key = ns.activeKey, start = GetTime(), fell = false }
         combat.prey, combat.preyType, combat.preyFamily = readPrey()
@@ -579,8 +576,6 @@ function events.PLAYER_REGEN_ENABLED()
     end
     local c = combat
     combat = nil
-    dbg(("SALE: combate=%s cayo=%s mascota=%s muerta=%s jugadorMuerto=%s"):format(tostring(c ~= nil), tostring(c and c.fell),
-        tostring(petExists()), tostring(safe(UnitIsDead, "pet")), tostring(safe(UnitIsDeadOrGhost, "player"))))
     if c then
         local pet = ns:GetPet(c.key)
         if pet then
@@ -608,7 +603,6 @@ end
 
 function events.UNIT_SPELLCAST_SUCCEEDED(unit, _, spellID)
     if unit ~= "player" or isSecret(spellID) then return end
-    dbg("hechizo " .. tostring(spellID)) -- temporal: confirma el ID de Domar bestia en Forever
     if SPELL_TAME_BEAST[spellID] then
         lastTameCast = GetTime()
     elseif spellID == SPELL_DISMISS_PET then
@@ -707,9 +701,6 @@ SlashCmdList.VINCULO = function(msg)
         -- Enseña el aviso de logro con un logro de prueba (para ver cómo queda).
         local pet = ns:GetPet(ns.activeKey or ns.lastKey)
         if pet then ns.UI:Toast(pet, (ns:AchievementText("victory_1")), "Interface\\Icons\\Ability_Hunter_Pet_Wolf") end
-    elseif msg == "debug" then
-        for _, line in ipairs(dbgLog) do ns:Print(line) end
-        if #dbgLog == 0 then ns:Print("debug: sin combates todavía") end
     elseif msg == "ayuda" or msg == "help" then
         ns:Print(L.HELP)
     else

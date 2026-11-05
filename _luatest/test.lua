@@ -583,12 +583,11 @@ ns:AddWish("Lobo joven, Bosque de Elwynn")
 S.target = { name = "Lobo joven", family = "Lobo" }
 local printedBefore = #printed
 ns.events.PLAYER_TARGET_CHANGED()
-local alertSeen = false
-for i = printedBefore + 1, #printed do if printed[i]:find("Ahí está") then alertSeen = true end end
-check(alertSeen, "avisa al ver una bestia de la lista")
-local printedMid = #printed
+local alertShown = ns.UI.toast and ns.UI.toast.name._text == "Lobo joven" and ns.UI.toast.title._text:find("Ahí está")
+check(alertShown, "avisa al ver una bestia de la lista (panel)")
+ns.UI.toast.name:SetText("")
 ns.events.PLAYER_TARGET_CHANGED()
-check(#printed == printedMid, "no repite el aviso enseguida")
+check(ns.UI.toast.name._text == "", "no repite el aviso enseguida")
 local tipLines = {}
 local tip = { AddLine = function(_, text) tipLines[#tipLines + 1] = text end, Show = function() end }
 ns.AddBeastLines(tip, "target")
@@ -725,12 +724,23 @@ S.pet = { guid = "Pet-0-1-1-1-3823-NEWGUID", name = huargo.name, family = huargo
 fire("UNIT_PET", "player")
 check(huargo.key ~= oldKey and ns.charDB.week.pets[huargo.key] and not ns.charDB.week.pets[oldKey], "el resumen semanal sigue a la mascota al cambiar su clave")
 
+-- Una ficha retirada que se vuelve a llamar con otro GUID se reutiliza, no se duplica
+local nPets = 0; for _ in pairs(ns.charDB.pets) do nPets = nPets + 1 end
+huargo.retired = true; ns.activeKey = nil
+S.pet = { guid = "Pet-0-1-1-1-3823-RETIRADA", name = huargo.name, family = huargo.family, level = huargo.level }
+fire("UNIT_PET", "player")
+local nAfter = 0; for _ in pairs(ns.charDB.pets) do nAfter = nAfter + 1 end
+check(nAfter == nPets and not huargo.retired and ns.activeKey == huargo.key, "una ficha retirada se reutiliza al volver con otro GUID")
+
 -- Abandonar la mascota: queda abandonada, no se reactiva y no hay botón de recuperarla
 ns.activeKey = huargo.key
 ns:PetAbandoned()
 ns.UI.selectedKey = huargo.key; ns.UI:Refresh()
 check(huargo.abandoned and huargo.retired and ns.activeKey == nil and huargo.timeline[#huargo.timeline].e == "EV_ABANDONED", "abandonar la deja en el recuerdo con su suceso")
 check(ns.UI.tagText._text:find("Abandonada") and not ns.UI.tagText._text:find("En el recuerdo"), "la ficha dice Abandonada")
+S.pet = { guid = huargo.key, name = huargo.name, family = huargo.family, level = huargo.level }
+fire("UNIT_PET", "player") -- la misma mascota aún existe un instante tras abandonarla
+check(huargo.retired and ns.activeKey ~= huargo.key, "la abandonada no se reactiva con su mismo GUID")
 S.pet = { guid = "Pet-0-1-1-1-3823-OTRO", name = huargo.name, family = huargo.family, level = huargo.level }
 fire("UNIT_PET", "player")
 check(huargo.retired and ns.activeKey ~= huargo.key, "una mascota nueva con el mismo nombre no reactiva a la abandonada")

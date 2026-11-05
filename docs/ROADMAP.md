@@ -85,15 +85,16 @@ Estado de las APIs según esa fuente (declarada no significa probada en el juego
 
 ### 5 de noviembre de 2026 (versión 0.1.3, publicada en GitHub y CurseForge, tag `v0.1.3`)
 - [x] Tarjeta para compartir (`/vinculo tarjeta`, icono junto al engranaje), resumen semanal en ventana (`/vinculo semana`), Bestiario sin mascota, estados Caída / Descansando / Abandonada / En el establo, Códice del personaje, marcas de mapa con círculo de zona y opción para apagarlas, botón de alimentar con macro, ID de Domar bestia en Forever. Detalle en `CHANGELOG.md`.
-- [x] Confirmado en el juego: mapa, alimentar, tarjeta, domar. **Sin ver todavía:** la ventana del resumen semanal.
+- [x] Confirmado en el juego: mapa, alimentar, tarjeta, domar. Resumen semanal visto en 0.1.4 (espaciado ajustado).
 
 ### Pendiente para 0.1.4
-- [ ] **Aviso visual de bestia** (hoy es una línea de chat): panel propio con icono de familia, que respete las opciones de avisos, nunca en combate.
-- [ ] **Detección de abandono:** al abandonar o liberar sigue saliendo "Descansando". Usar `/vinculo debug` tras abandonar; puede estar relacionado el logro 5149 "Doma de bestias".
-- [ ] **Ficha duplicada** de una mascota retirada que se vuelve a llamar con otro GUID.
-- [ ] Quitar `or loyalty == 1` (comprobar primero que no rompe nada).
-- [ ] Quitar el registro temporal de depuración (`/vinculo debug`, líneas `dbg`, "alimentar: clic").
-- [ ] Revisar que los textos en inglés caben en la tarjeta y en el resumen.
+- [x] Ventana del resumen semanal: más altura y aire entre título, cifras y zonas (visto en el juego).
+- [x] **Aviso visual de bestia** (panel propio con icono de familia; sin ver en el juego), que respete las opciones de avisos, nunca en combate.
+- [x] **Detección de abandono (confirmado en el juego):** al abandonar o liberar sigue saliendo "Descansando". Usar `/vinculo debug` tras abandonar; puede estar relacionado el logro 5149 "Doma de bestias".
+- [x] **Ficha duplicada** de una mascota retirada que se vuelve a llamar con otro GUID.
+- [x] Quitar `or loyalty == 1` (comprobar primero que no rompe nada).
+- [x] Quitar el registro temporal de depuración (`/vinculo debug`, líneas `dbg`, "alimentar: clic").
+- [x] Textos en inglés en la tarjeta y el resumen: revisados por longitud (todos iguales o más cortos que en español salvo "achievements", que cabe en 94 px; título con ajuste automático). Sin ver en el juego.
 
 ### Ideas para después (no pedidas todavía)
 - Catálogo visual del Bestiario con modelos 3D (empezar con una ventana de prueba de 12–24 bestias; datos de volcados CMaNGOS/AzerothCore, ojo con las licencias).

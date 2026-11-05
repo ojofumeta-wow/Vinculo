@@ -626,7 +626,12 @@ function ns:CheckBeastAlert(unit)
     for _, w in ipairs(wishes) do
         if not w.done and fold(w.name) == key then
             alerted[key] = now
-            self:Print(L.ALERT_BEAST:format(name))
+            if ns.UI and ns.UI.PanelToast then
+                local fam = safe(UnitCreatureFamily, unit)
+                ns.UI:PanelToast(L.ALERT_BEAST_TITLE, name, ns.UI:FamilyIcon(fam))
+            else
+                self:Print(L.ALERT_BEAST:format(name))
+            end
             if opt.sound and SOUNDKIT and SOUNDKIT.UI_EPICLOOT_TOAST then pcall(PlaySound, SOUNDKIT.UI_EPICLOOT_TOAST) end
             return
         end
@@ -722,7 +727,6 @@ end
 function ns:ShowZoneOnMap(zone)
     local id = self:ZoneMapID(zone)
     if not id then
-        ns.dbg(("mapa: sin id para «%s»; zonas conocidas del cliente=%d"):format(tostring(zone), #self:ZoneList()))
         self:Print(L.MAP_NOZONE:format(tostring(zone)))
         return
     end
@@ -736,10 +740,6 @@ function ns:ShowZoneOnMap(zone)
         if not WorldMapFrame:IsShown() and ToggleWorldMap then pcall(ToggleWorldMap) end
         opened = pcall(WorldMapFrame.SetMapID, WorldMapFrame, id)
     end
-    -- Temporal: queda en /vinculo debug para ver por qué no abre el mapa en Forever.
-    ns.dbg(("mapa: zona=%s id=%s OpenWorldMap=%s abierto=%s"):format(tostring(zone), tostring(id),
-        tostring(C_Map and C_Map.OpenWorldMap ~= nil), tostring(opened)))
-    if not opened then self:Print(L.MAP_FAIL:format(zone)) end
     -- El mapa debe verse por encima del libro: se baja el libro mientras el mapa esté abierto.
     if opened and ns.UI and ns.UI.frame and WorldMapFrame and WorldMapFrame.HookScript then
         ns.UI:SetStrata("LOW")

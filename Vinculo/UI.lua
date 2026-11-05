@@ -42,6 +42,9 @@ end
 local function petIcon(pet)
     return pet.icon or (pet.family and FAMILY_ICONS[pet.family:lower()]) or DEFAULT_ICON
 end
+function UI:FamilyIcon(family)
+    return family and FAMILY_ICONS[family:lower()] or DEFAULT_ICON
+end
 local MEDIA = "Interface\\AddOns\\" .. ADDON .. "\\Media\\"
 
 local BACKDROP = {
@@ -899,7 +902,6 @@ function UI:BuildPage()
     feed.count:SetPoint("BOTTOMRIGHT", -1, 1)
     feed:SetScript("PreClick", function()
         UI:RefreshFeed(true)
-        ns.dbg(("alimentar: clic, comida=%s"):format(tostring(feed.foodId))) -- temporal, para /vinculo debug
     end)
     feed:SetScript("OnEnter", function(s)
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
@@ -1789,7 +1791,7 @@ function UI:Card(pet)
     c:Show()
 end
 
-local WEEK_W, WEEK_H = 360, 180
+local WEEK_W, WEEK_H = 360, 196
 local function buildWeek()
     local w = loosePage("VinculoWeekFrame", "Week", WEEK_W, WEEK_H)
     -- La tira de cuero cuelga del centro (hasta ~1/3 de la altura): el título va debajo.
@@ -1798,12 +1800,12 @@ local function buildWeek()
     w.title:SetWordWrap(false)
     w.nums, w.labels = {}, {}
     for i = 1, 3 do
-        w.nums[i], w.labels[i] = bigStat(w, 70 + (i - 1) * 110, -88, 24)
+        w.nums[i], w.labels[i] = bigStat(w, 70 + (i - 1) * 110, -98, 24)
     end
     w.labels[1]:SetText(L.CARD_FIGHTS)
     w.labels[2]:SetText(L.WEEK_BOSSES_LABEL)
     w.labels[3]:SetText(L.CARD_TIME)
-    w.zones = centered(w, "GameFontHighlightSmall", INK_SOFT, -128)
+    w.zones = centered(w, "GameFontHighlightSmall", INK_SOFT, -146)
     local function action(label, point, x, onClick)
         local b = CreateFrame("Button", nil, w)
         local fs = ink(b, "GameFontHighlightSmall", INK_SOFT)
@@ -1956,6 +1958,11 @@ function UI:Toast(pet, achName, icon)
         end
         nativeToast = false -- falló: a partir de ahora, siempre el panel propio
     end
+    self:PanelToast(L.TOAST_ACHIEVEMENT:format(pet.name), achName, icon)
+end
+
+-- Panel propio, pequeño y arriba (también para el aviso de bestia).
+function UI:PanelToast(title, name, icon)
     local t = self.toast
     if not t then
         -- Pequeño y arriba, fuera de la zona de combate; no captura el ratón.
@@ -1980,8 +1987,8 @@ function UI:Toast(pet, achName, icon)
         self.toast = t
     end
     t.icon:SetTexture(icon or DEFAULT_ICON)
-    t.title:SetText(L.TOAST_ACHIEVEMENT:format(pet.name))
-    t.name:SetText(achName)
+    t.title:SetText(title)
+    t.name:SetText(name)
     t.left = 4
     t:SetAlpha(1)
     t:Show()
