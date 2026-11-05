@@ -5,7 +5,7 @@
 --   Solo se guarda la zona principal de cada bestia (puede haber mas zonas).
 -- `es` solo si viene de nether.wowhead.com/classic/es/tooltip/npc/<id> (Wowhead Classic es).
 -- uiMapID Classic Era: guildorder.com (Eastern Kingdoms 1415 / Kalimdor 1414).
---   Sin confirmar en fuente web (por orden de la serie 1411-1452): 1417 Arathi, 1422/1423 Plaguelands, 1435 Swamp, 1447 Azshara.
+--   Confirmados en Forever con C_Map.GetMapInfo: 1417 Arathi, 1422/1423 Plaguelands, 1435 Swamp, 1447 Azshara.
 local _, ns = ...
 
 ns.BEASTS = {

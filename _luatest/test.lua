@@ -217,6 +217,15 @@ check(ns.UI.storyRows[1]._shown and ns.UI.storyRows[1].text._text == ns:FormatEv
 check(ns.UI.storyRows[#pet.timeline]._shown and not ns.UI.storyRows[#pet.timeline + 1], "hay una fila por suceso")
 ns.UI.tab = "travels"; ns.UI:Refresh()
 check(not ns.UI.storyRows[1]._shown, "la línea de tiempo se oculta en otras pestañas")
+-- Sin mascotas, el libro se abre en el Bestiario y vuelve a la mascota al llegar la primera
+local savedPets, savedOrder = ns.charDB.pets, ns.charDB.order
+ns.charDB.pets, ns.charDB.order = {}, {}
+ns.UI.selectedKey = nil; ns.UI:Refresh()
+check(ns.UI.selectedKey == "wishes" and ns.UI.sinceText._text ~= "", "sin mascotas abre el Bestiario con su aviso")
+ns.charDB.pets, ns.charDB.order = savedPets, savedOrder
+ns.UI:Refresh()
+check(ns.UI.selectedKey ~= "wishes", "al llegar una mascota, deja el Bestiario")
+ns.UI.selectedKey = pet.key; ns.UI:Refresh()
 check(ns.UI.body._text:find("Reinos del Este %(1%)"), "Viajes agrupa las zonas por continente: " .. tostring(ns.UI.body._text))
 ns.UI.tab = "story"; ns.UI:Refresh()
 check(ns.UI.nameText._text == "Rayo", "muestra la ficha seleccionada")
@@ -289,7 +298,14 @@ ns:CheckWeek(true)
 check(#printed == before, "misma semana: no repite el resumen")
 clock = clock + 8 * 86400
 ns:CheckWeek(true)
-check(#printed == before + 1 and printed[#printed]:find("40 combates, 3 jefes"), "resumen semanal: " .. printed[#printed])
+local lw = ns.charDB.lastWeek
+check(lw and lw.v == 40 and lw.b == 3 and lw.t == 5 * 3600 and #printed == before, "resumen semanal guardado para la ventana")
+ns.UI:Week() -- la ventana se construye y se rellena sin errores
+ns.UI:Card(pet2)
+check(ns.UI.card and ns.UI.week, "tarjeta y resumen se crean")
+check(not ns.UI.frame._shown, "abrir la tarjeta cierra el libro")
+check(pcall(ns.UI.card._scripts.OnUpdate, ns.UI.card), "la tarjeta se actualiza sin errores (la X sigue al ratón)")
+ns.UI.frame:Show()
 ns.db.opt.weekly = false
 clock = clock + 8 * 86400
 before = #printed
@@ -540,6 +556,14 @@ WorldMapFrame = { GetMapID = function() return 10 end, GetCanvas = function() re
 ns:AddWish("Oso, Páramos de Poniente")
 local pinOk, pinErr = pcall(ns.UpdateMapPins, ns, pinCanvas)
 check(pinOk, "dibujar las marcas del mapa no falla: " .. tostring(pinErr))
+-- Zona aproximada vista desde otro mapa (sin GetMapRectOnMap) y con el interruptor apagado
+WorldMapFrame.GetMapID = function() return 11 end
+pinOk, pinErr = pcall(ns.UpdateMapPins, ns, pinCanvas)
+check(pinOk, "el círculo de zona aproximada se dibuja en otro mapa: " .. tostring(pinErr))
+ns.db.opt.mapPins = false
+pinOk, pinErr = pcall(ns.UpdateMapPins, ns, pinCanvas)
+check(pinOk and ns.db.opt.mapPins == false, "con el interruptor apagado no se dibuja nada: " .. tostring(pinErr))
+ns.db.opt.mapPins = true
 ns:RemoveWish(#ns:GetWishes())
 WorldMapFrame = nil
 
@@ -666,4 +690,54 @@ function GetPetTrainingPoints() return 150, 50 end
 fire("UNIT_HAPPINESS", "pet")
 check(huargo.happiness == 2 and huargo.trainingFree == 100 and huargo.trainingTotal == 150, "en Era lee ánimo y entrenamiento de las globales")
 GetPetHappiness, GetPetTrainingPoints = nil, nil
+
+-- Forever: Domar bestia lanza otro ID de hechizo y la lealtad no sirve de pista
+fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 1278028)
+S.pet = { guid = "Pet-0-1-1-1-3824-0A1B2D", name = "Ocultorroca", family = "Jabalí", level = 8 }
+fire("UNIT_PET", "player")
+check(ns:GetPet(ns.activeKey).name == "Ocultorroca" and ns:GetPet(ns.activeKey).tamed, "en Forever reconoce Domar bestia por su ID nuevo")
+
+-- Al despedirla, la ficha se actualiza sola: "Descansando" y sin "Aún os estáis conociendo"
+local ocul = ns:GetPet(ns.activeKey)
+ns.UI.selectedKey = ocul.key; ns.UI:Refresh()
+check(ns.UI.tagText._text:find("Contigo ahora") and ns.UI.tagText._text:find("conociendo"), "con ella a tu lado: Contigo ahora y su personalidad")
+fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 2641)
+S.pet = nil; fire("UNIT_PET", "player")
+ns.UI.selectedKey = ocul.key; ns.UI:Refresh()
+check(ns.UI.tagText._text:find("Descansando") and not ns.UI.tagText._text:find("Contigo ahora") and not ns.UI.tagText._text:find("conociendo"),
+    "despedida: sale Descansando y desaparece la personalidad de recién llegada: " .. tostring(ns.UI.tagText._text))
+
+-- Muerta y sin revivir: Caída
+ocul.pendingFall = true; ns.UI:Refresh()
+check(ns.UI.tagText._text:find("Caída") and not ns.UI.tagText._text:find("Descansando"), "muerta sin revivir: sale Caída")
+ocul.pendingFall = nil
+
+-- Borrar la ficha no borra lo aprendido en el Códice
+local function tamedCount() local c = ns:Codex(); return c.baseTamed + c.extraTamed end
+local before = tamedCount()
+ns:DeletePet(ocul)
+check(before >= 1 and tamedCount() == before, "borrar una mascota conserva su familia en el Códice")
+
+-- Si el GUID de la mascota cambia, su foto del resumen semanal cambia de clave con ella
+local oldKey = huargo.key
+ns.charDB.week = { id = -1, pets = { [oldKey] = { v = 1, b = 0, z = 0, t = 0 } } }
+S.pet = { guid = "Pet-0-1-1-1-3823-NEWGUID", name = huargo.name, family = huargo.family, level = huargo.level }
+fire("UNIT_PET", "player")
+check(huargo.key ~= oldKey and ns.charDB.week.pets[huargo.key] and not ns.charDB.week.pets[oldKey], "el resumen semanal sigue a la mascota al cambiar su clave")
+
+-- Abandonar la mascota: queda abandonada, no se reactiva y no hay botón de recuperarla
+ns.activeKey = huargo.key
+ns:PetAbandoned()
+ns.UI.selectedKey = huargo.key; ns.UI:Refresh()
+check(huargo.abandoned and huargo.retired and ns.activeKey == nil and huargo.timeline[#huargo.timeline].e == "EV_ABANDONED", "abandonar la deja en el recuerdo con su suceso")
+check(ns.UI.tagText._text:find("Abandonada") and not ns.UI.tagText._text:find("En el recuerdo"), "la ficha dice Abandonada")
+S.pet = { guid = "Pet-0-1-1-1-3823-OTRO", name = huargo.name, family = huargo.family, level = huargo.level }
+fire("UNIT_PET", "player")
+check(huargo.retired and ns.activeKey ~= huargo.key, "una mascota nueva con el mismo nombre no reactiva a la abandonada")
+S.pet = nil
+
+-- La lealtad de Forever llega como "(Nivel de lealtad 1) Rebelde": la línea solo debe llevar el nombre
+huargo.loyaltyText = "(Nivel de lealtad 1) Rebelde"
+ns.UI.selectedKey = huargo.key; ns.UI:Refresh()
+check(ns.UI.subText._text:find("Rebelde") and not ns.UI.subText._text:find("Nivel de lealtad"), "la línea de nivel no lleva el paréntesis de lealtad: " .. tostring(ns.UI.subText._text))
 print("\nTODAS LAS PRUEBAS PASAN")

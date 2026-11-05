@@ -50,3 +50,35 @@ A square emblem icon for a fantasy game addon about a hunter and their animal co
 ---
 
 Si una imagen sale con texto o en perspectiva, repite añadiendo al final: `Strictly no text and strictly flat top-down view.`
+
+## 5. Tarjeta para compartir → `art/card.png`
+
+Formato 9:14 (vertical, p. ej. 1024×1600; luego se recorta a 256×512 con el centro libre). Pedir ESTE mismo estilo que el libro (ver 1) para que combinen.
+
+```
+A flat, perfectly front-on view of a single vertical aged parchment page framed by a thin border of dark brown worn leather with fine gold-thread stitching and small brass corner caps shaped like stylized paw prints, filling the whole image edge to edge, 9:14 portrait aspect ratio. Hand-painted fantasy game UI texture style, warm and slightly stylized, like classic MMORPG interface art, but an original design.
+
+The parchment is cream to light tan with darker burnt-tan vignetting toward the edges, subtle paper fibers and a faint tea-cup ring stain near the bottom. The top edge has a small empty round brass socket centered near the top (plain parchment inside, empty) to hold a portrait later. Everything else in the center is completely blank and calm, with even contrast, so text can be placed over it.
+
+No text, no writing, no letters, no symbols, no illustrations, no icons, no hands, no table, no background scene. Even, soft lighting, no strong shadows. The area outside the leather border is pure magenta #FF00FF.
+```
+
+## 6. Resumen semanal → `art/week.png`
+
+Formato 2:1 (horizontal, p. ej. 1024×512; luego se recorta a 512×256).
+
+```
+A flat, perfectly front-on view of a single horizontal aged parchment page framed by a thin border of dark brown worn leather with fine gold-thread stitching and small brass corner caps shaped like stylized paw prints, filling the whole image edge to edge, 2:1 landscape aspect ratio. Hand-painted fantasy game UI texture style, warm and slightly stylized, like classic MMORPG interface art, but an original design.
+
+The parchment is cream to light tan with darker burnt-tan vignetting toward the edges, subtle paper fibers and a small ink blot in one lower corner. A narrow braided leather strap hangs from the top edge as a bookmark. The whole center is completely blank and calm, with even contrast, so text can be placed over it.
+
+No text, no writing, no letters, no symbols, no illustrations, no icons, no hands, no table, no background scene. Even, soft lighting, no strong shadows. The area outside the leather border is pure magenta #FF00FF.
+```
+
+## 7. Icono de la tarjeta → `art/card-icon.png`
+
+Formato 1:1 (p. ej. 256×256; se reduce a 32×32). Sustituye al icono provisional junto al engranaje. Debe leerse a 16 px.
+
+```
+A single small simple icon of a rectangular portrait card with a tiny paw print in its center, drawn as a bold dark-brown ink silhouette with a thin outline, flat, no gradient, no shading, no text, centered on a pure magenta #FF00FF background. Hand-drawn fantasy journal style, same ink weight as a small gear icon. Clean shape that stays readable at 16 pixels.
+```

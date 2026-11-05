@@ -213,12 +213,10 @@ function ns:CheckWeek(notify)
             end
         end
         if best and (bestDelta.v > 0 or bestDelta.t >= 600) then
-            local parts = {}
-            if bestDelta.v > 0 then parts[#parts + 1] = (bestDelta.v == 1 and L.WEEK_FIGHT or L.WEEK_FIGHTS):format(bestDelta.v) end
-            if bestDelta.b > 0 then parts[#parts + 1] = (bestDelta.b == 1 and L.WEEK_BOSS or L.WEEK_BOSSES):format(bestDelta.b) end
-            if bestDelta.z > 0 then parts[#parts + 1] = (bestDelta.z == 1 and L.WEEK_ZONE or L.WEEK_ZONES):format(bestDelta.z) end
-            parts[#parts + 1] = L.WEEK_TIME:format(ns.FormatTime(bestDelta.t))
-            self:Print(L.WEEK_SUMMARY:format(best.name, table.concat(parts, ", ")))
+            -- Se guarda para poder volver a verlo con /vinculo semana; la ventana la dibuja la interfaz.
+            charDB.lastWeek = { name = best.name, v = bestDelta.v, b = bestDelta.b, z = bestDelta.z, t = bestDelta.t }
+            -- Una ventana que falle no debe romper el inicio de sesión: el resumen queda guardado para /vinculo semana.
+            pcall(self.UI.Week, self.UI)
         end
     end
 
@@ -376,12 +374,24 @@ function ns:ZoneList()
     if zoneCache then return zoneCache end
     local list = {}
     if C_Map and C_Map.GetMapChildrenInfo then
-        -- allDescendants: los continentes de Azeroth cuelgan del mapa "Azeroth" (947), no directamente del cósmico.
-        local ok, continents = pcall(C_Map.GetMapChildrenInfo, 946, 2, true)
-        for _, c in ipairs(ok and type(continents) == "table" and continents or {}) do
-            local ok2, zones = pcall(C_Map.GetMapChildrenInfo, c.mapID, 3, true)
+        -- Los continentes salen de los mapas raíz (en Forever el cósmico 946 no devolvía nada), de los que cuelgan del
+        -- mapa de Azeroth y de los dos conocidos: Kalimdor 1414 y Reinos del Este 1415 (este último confirmado en Forever).
+        local continents, seen = {}, {}
+        local function add(id)
+            if type(id) == "number" and not seen[id] then seen[id] = true; continents[#continents + 1] = id end
+        end
+        for _, root in ipairs({ 946, 947 }) do
+            local ok, found = pcall(C_Map.GetMapChildrenInfo, root, 2, true)
+            for _, c in ipairs(ok and type(found) == "table" and found or {}) do add(c.mapID) end
+        end
+        add(1414)
+        add(1415)
+        for _, id in ipairs(continents) do
+            local info = ns.safe(C_Map.GetMapInfo, id)
+            local hint = type(info) == "table" and info.name or nil
+            local ok2, zones = pcall(C_Map.GetMapChildrenInfo, id, 3, true)
             for _, z in ipairs(ok2 and type(zones) == "table" and zones or {}) do
-                if type(z.name) == "string" and z.name ~= "" then list[#list + 1] = { text = z.name, hint = c.name, id = z.mapID } end
+                if type(z.name) == "string" and z.name ~= "" then list[#list + 1] = { text = z.name, hint = hint, id = z.mapID } end
             end
         end
     end
@@ -397,6 +407,17 @@ function ns:ZoneMapID(name)
     for _, z in ipairs(self:ZoneList()) do
         if z.id and fold(z.text) == n then return z.id end
     end
+    -- Respaldo: si estás en esa zona (o dentro de ella), su mapa sale subiendo desde el mapa actual.
+    if C_Map and C_Map.GetBestMapForUnit and C_Map.GetMapInfo then
+        local id = ns.safe(C_Map.GetBestMapForUnit, "player")
+        for _ = 1, 6 do
+            if type(id) ~= "number" or id <= 0 then break end
+            local info = ns.safe(C_Map.GetMapInfo, id)
+            if type(info) ~= "table" then break end
+            if type(info.name) == "string" and fold(info.name) == n then return id end
+            id = info.parentMapID
+        end
+    end
 end
 
 -- Marcas propias en el mapa del mundo: una por zona con deseos pendientes, en el centro de la zona (o de su recuadro
@@ -409,9 +430,19 @@ local function newMapPin(canvas)
     pin:SetSize(28, 28)
     pin:SetFrameStrata("DIALOG") -- por encima del mapa y de sus marcas (con solo el nivel de marco quedaba debajo)
     pin:SetFrameLevel(9000)
-    local icon = pin:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    icon:SetTexture("Interface\\AddOns\\Vinculo\\Media\\Icon")
+    -- Lugar visto de verdad: el icono. Zona aproximada: un círculo que la rodea (las texturas no capturan el ratón,
+    -- así que el aro no estorba al mapa; solo el centro de 28 px enseña el tooltip).
+    pin.icon = pin:CreateTexture(nil, "ARTWORK")
+    pin.icon:SetAllPoints()
+    pin.icon:SetTexture("Interface\\AddOns\\Vinculo\\Media\\Icon")
+    pin.ring = pin:CreateTexture(nil, "ARTWORK")
+    pin.ring:SetPoint("CENTER")
+    pin.ring:SetTexture("Interface\\AddOns\\Vinculo\\Media\\ZoneRing")
+    pin.dot = pin:CreateTexture(nil, "OVERLAY")
+    pin.dot:SetSize(10, 10)
+    pin.dot:SetPoint("CENTER")
+    pin.dot:SetTexture("Interface\\AddOns\\Vinculo\\Media\\Circle")
+    pin.dot:SetVertexColor(1, 0.75, 0.16, 1)
     pin:SetScript("OnEnter", function(s)
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
         GameTooltip:SetText(L.TITLE)
@@ -467,13 +498,25 @@ local function onMap(cur, map, x, y)
     end
 end
 
+-- Diámetro (en fracción del lado menor del lienzo) del círculo que rodea la zona `id` vista desde el mapa `cur`.
+local function zoneDiameter(cur, id, w, h)
+    if id == cur then return 0.4 end -- ya estás dentro de la zona: un círculo moderado en su centro
+    if C_Map and C_Map.GetMapRectOnMap then
+        local ok, l, r, t, b = pcall(C_Map.GetMapRectOnMap, id, cur)
+        if ok and l and r and t and b then
+            return math.max(0.03, math.min((r - l) * w, (b - t) * h) * 0.8 / math.min(w, h))
+        end
+    end
+    return 0.1
+end
+
 function ns:UpdateMapPins(canvas)
     local cur = WorldMapFrame:GetMapID()
     local scale = (WorldMapFrame.GetCanvasScale and WorldMapFrame:GetCanvasScale()) or 1
     if type(scale) ~= "number" or scale <= 0 then scale = 1 end
     local w, h = canvas:GetWidth(), canvas:GetHeight()
     local points = {}
-    for _, wish in ipairs(self:GetWishes()) do
+    for _, wish in ipairs(ns.db.opt.mapPins and self:GetWishes() or {}) do
         if wish.zone and not wish.done and #points < 40 then
             local spots = self:SpotsFor(wish.name)
             if #spots > 0 then
@@ -487,7 +530,7 @@ function ns:UpdateMapPins(canvas)
                 local id = self:ZoneMapID(wish.zone)
                 local x, y
                 if id then x, y = onMap(cur, id, 0.5, 0.5) end
-                if x then points[#points + 1] = { x = x, y = y, name = wish.name, approx = true } end
+                if x then points[#points + 1] = { x = x, y = y, name = wish.name, approx = true, d = zoneDiameter(cur, id, w, h) } end
             end
         end
     end
@@ -496,6 +539,13 @@ function ns:UpdateMapPins(canvas)
         local pin = mapPins[i]
         if not pin then pin = newMapPin(canvas); mapPins[i] = pin end
         pin.names = { p.name, p.approx and L.MAP_APPROX or nil }
+        pin.icon:SetShown(not p.approx)
+        pin.ring:SetShown(p.approx and true or false)
+        pin.dot:SetShown(p.approx and true or false)
+        if p.approx then
+            local size = p.d * math.min(w, h) / ps -- píxeles del lienzo, compensando el zoom como la posición
+            pin.ring:SetSize(size, size)
+        end
         pin:SetScale(ps)
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", canvas, "TOPLEFT", p.x * w / ps, -p.y * h / ps)
@@ -547,7 +597,7 @@ function ns:BestFood()
         for slot = 1, slots(bag) or 0 do
             local id = itemAt(bag, slot)
             if id and petEats(id) then
-                local level = select(4, GetItemInfo(id)) or 0
+                local level = select(4, ns.ItemInfo(id)) or 0
                 local info = CC and CC.GetContainerItemInfo and CC.GetContainerItemInfo(bag, slot)
                 local count = type(info) == "table" and info.stackCount or 1
                 if not bestId or level > bestLevel or (level == bestLevel and count < bestCount) then
@@ -672,6 +722,7 @@ end
 function ns:ShowZoneOnMap(zone)
     local id = self:ZoneMapID(zone)
     if not id then
+        ns.dbg(("mapa: sin id para «%s»; zonas conocidas del cliente=%d"):format(tostring(zone), #self:ZoneList()))
         self:Print(L.MAP_NOZONE:format(tostring(zone)))
         return
     end
@@ -685,6 +736,10 @@ function ns:ShowZoneOnMap(zone)
         if not WorldMapFrame:IsShown() and ToggleWorldMap then pcall(ToggleWorldMap) end
         opened = pcall(WorldMapFrame.SetMapID, WorldMapFrame, id)
     end
+    -- Temporal: queda en /vinculo debug para ver por qué no abre el mapa en Forever.
+    ns.dbg(("mapa: zona=%s id=%s OpenWorldMap=%s abierto=%s"):format(tostring(zone), tostring(id),
+        tostring(C_Map and C_Map.OpenWorldMap ~= nil), tostring(opened)))
+    if not opened then self:Print(L.MAP_FAIL:format(zone)) end
     -- El mapa debe verse por encima del libro: se baja el libro mientras el mapa esté abierto.
     if opened and ns.UI and ns.UI.frame and WorldMapFrame and WorldMapFrame.HookScript then
         ns.UI:SetStrata("LOW")
@@ -864,10 +919,29 @@ function ns:BeastSuggestions(query)
     return out
 end
 
+-- Al borrar una mascota se conserva en el Códice lo que había aprendido (familia domada, presas).
+function ns:KeepInCodex(pet)
+    local keep = ns.charDB.codexKept
+    if not keep then
+        keep = { tamed = {}, preyFamilies = {}, preyTypes = {}, prey = 0 }
+        ns.charDB.codexKept = keep
+    end
+    local k = self:FamilyKey(pet.family)
+    if k and (not keep.tamed[k] or (pet.created or 0) < keep.tamed[k]) then keep.tamed[k] = pet.created or 0 end
+    for fam, n in pairs(pet.preyFamilies or {}) do keep.preyFamilies[fam] = (keep.preyFamilies[fam] or 0) + n end
+    for _, n in pairs(pet.prey or {}) do keep.prey = keep.prey + n end
+    for t in pairs(pet.preyTypes or {}) do keep.preyTypes[t] = true end
+end
+
 -- Todo lo que cuenta el Códice, sumando todas las mascotas del diario.
 function ns:Codex()
-    local tamed, kills, types, prey, pets = {}, {}, {}, 0, 0
+    -- Parte de lo guardado de las mascotas ya borradas: el Códice es del personaje, no de cada ficha.
+    local keep = ns.charDB.codexKept or { tamed = {}, preyFamilies = {}, preyTypes = {}, prey = 0 }
+    local tamed, kills, types, prey, pets = {}, {}, {}, keep.prey, 0
     local typeCount = 0
+    for k, t in pairs(keep.tamed) do tamed[k] = t end
+    for fam, n in pairs(keep.preyFamilies) do kills[fam] = n end
+    for t in pairs(keep.preyTypes) do types[t] = true; typeCount = typeCount + 1 end
     for _, pet in pairs(ns.charDB.pets) do
         pets = pets + 1
         local k = self:FamilyKey(pet.family)

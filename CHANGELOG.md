@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.1.3
+
+### Added
+- Share card: a compact vertical card of your pet (portrait, numbers, achievements) made for screenshots. Open it with the card icon next to the gear, or `/vinculo card`. Move it by dragging; hover to see the close button.
+- Weekly summary window on login (replaces the chat line). Repeat it with `/vinculo week`. It can be turned off in the options.
+- The Bestiary can be used without a pet: the book opens there when your journal is empty.
+- Pet states on the card: "Fallen" until revived, "Resting" after dismissing, "Abandoned" after abandoning it (detection of abandoning is still being checked), plus the existing "In the stable" and "In memory".
+- Map marks for your wished beasts: a circle around the zone when the place is approximate, the icon where you actually saw the beast. New option to turn them off.
+
+### Changed
+- The Codex belongs to your character: deleting a pet keeps its family and prey. Achievements still go with the pet. The delete warning now says so.
+- "Aún os estáis conociendo" is only shown while the pet is with you.
+- Loyalty on the pet card no longer shows "(Nivel de lealtad N)".
+- Pet card: "Together since" only for pets you tamed with the addon; the others show "Journal since".
+- Wishes: up/down arrows move through the suggestions, Tab picks the highlighted one.
+
+### Fixed
+- Taming is recognised in Forever (new spell ID for Tame Beast).
+- The Feed button now works (it uses a macro).
+- "View map" opens the map for zones the client lists differently, and says so when it can't.
+- The weekly summary no longer counts a pet's whole life when its internal ID changes.
+- Opening the book with food in your bags can no longer fail on an item function.
+- The "Fallen" tag no longer sticks to a pet you put in the stable.
+- Long pet names fit on the card and the weekly window.
+
+### Known issues
+- Abandoning or releasing a pet may still show "Resting" instead of "Abandoned".
+- A retired pet called again with a new internal ID may create a second journal.
+- Each beast has a single zone in the Bestiary, and the data is for Classic.
+- If you change the game language, zone names may appear twice in Journeys.
+
+## 0.1.3 (español)
+
+### Añadido
+- Tarjeta para compartir: una ficha vertical y compacta de tu mascota (retrato, cifras, logros) pensada para capturas. Se abre con el icono de tarjeta junto al engranaje, o con `/vinculo tarjeta`. Se mueve arrastrando; al pasar el ratón sale la X para cerrarla.
+- Resumen semanal en una ventana al conectarte (sustituye a la línea de chat). Se repite con `/vinculo semana` y se puede apagar en las opciones.
+- El Bestiario se puede usar sin mascota: el libro se abre ahí cuando el diario está vacío.
+- Estados de la mascota en su ficha: "Caída" hasta revivirla, "Descansando" al despedirla, "Abandonada" al abandonarla (la detección del abandono aún se está comprobando), además de "En el establo" y "En el recuerdo".
+- Marcas en el mapa de tus bestias deseadas: un círculo alrededor de la zona cuando el lugar es aproximado, y el icono donde viste la bestia de verdad. Nueva opción para apagarlas.
+
+### Cambiado
+- El Códice es de tu personaje: al borrar una mascota se conserva su familia y sus presas. Los logros siguen yéndose con la mascota. El aviso de borrar ahora lo dice.
+- "Aún os estáis conociendo" solo sale mientras la mascota está contigo.
+- La lealtad en la ficha ya no muestra "(Nivel de lealtad N)".
+- Ficha de la mascota: "Juntos desde" solo en las que domesticaste con el addon; las demás muestran "Diario desde".
+- Deseos: las flechas arriba/abajo recorren las sugerencias y Tab elige la marcada.
+
+### Corregido
+- La domesticación se reconoce en Forever (nuevo ID de hechizo de Domar bestia).
+- El botón de alimentar funciona (usa una macro).
+- "Ver mapa" abre el mapa en zonas que el cliente lista de otra forma, y avisa cuando no puede.
+- El resumen semanal ya no cuenta toda la vida de la mascota cuando cambia su identificador interno.
+- Abrir el libro con comida en las bolsas ya no puede fallar por una función de objetos.
+- La etiqueta "Caída" ya no se queda pegada a una mascota que guardas en el establo.
+- Los nombres largos caben en la tarjeta y en la ventana del resumen.
+
+### Problemas conocidos
+- Al abandonar o liberar a una mascota puede seguir saliendo "Descansando" en vez de "Abandonada".
+- Una mascota retirada que vuelves a llamar con otro identificador interno puede crear un segundo diario.
+- Cada bestia tiene una sola zona en el Bestiario, y los datos son de Classic.
+- Si cambias el idioma del juego, los nombres de zona pueden salir duplicados en Viajes.
+
+---
+
 ## 0.1.2
 
 ### Fixed

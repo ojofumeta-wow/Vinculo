@@ -227,6 +227,12 @@ function UI:Build()
     gear:SetPoint("RIGHT", close, "LEFT", -6, 0)
     gear:SetScript("OnClick", function() UI.options:SetShown(not UI.options:IsShown()); UI:Refresh() end)
 
+    -- Tarjeta para compartir: icono junto a los ajustes, visible solo con una mascota seleccionada.
+    local cardIcon = inkIcon(MEDIA .. "CardIcon", L.CARD_TIP, true)
+    cardIcon:SetPoint("RIGHT", gear, "LEFT", -6, 0)
+    cardIcon:SetScript("OnClick", function() UI:Card(ns:GetPet(UI.selectedKey)) end)
+    self.cardIcon = cardIcon
+
     self:BuildList()
     self:BuildPage()
     self:BuildOptions()
@@ -243,6 +249,7 @@ local OPTION_LIST = {
     { "minimap", L.OPT_MINIMAP },
     { "beastAlert", L.OPT_ALERT },
     { "beastTip", L.OPT_TIP },
+    { "mapPins", L.OPT_PINS },
     { "noanim", L.OPT_NOANIM },
 }
 
@@ -256,8 +263,8 @@ function UI:BuildOptions()
     local checks = {}
     for i, opt in ipairs(OPTION_LIST) do
         local cb = CreateFrame("CheckButton", nil, o, "UICheckButtonTemplate")
-        cb:SetSize(20, 20)
-        cb:SetPoint("TOPLEFT", -2, -2 - (i - 1) * 19) -- 11 ajustes caben en el recuadro de la página
+        cb:SetSize(18, 18)
+        cb:SetPoint("TOPLEFT", -2, -2 - (i - 1) * 17.5) -- 12 ajustes caben en el recuadro de la página
         -- Casilla dibujada a tinta (Media/CheckOff y CheckOn), sin las texturas del juego
         for _, setter in ipairs({ "SetNormalTexture", "SetPushedTexture", "SetCheckedTexture", "SetDisabledCheckedTexture" }) do
             pcall(cb[setter], cb, "")
@@ -338,6 +345,7 @@ local function rowAt(index)
         UI.note:ClearFocus()
         UI.options:Hide()
         UI.selectedKey = self.key
+        UI.autoWish = nil
         UI:Refresh()
         fadeIn(UI.statBox, 0.2)
         fadeIn(UI.tabBox, 0.2)
@@ -459,6 +467,8 @@ function UI:BuildPage()
 
     local sub = numeric(ink(page, "GameFontHighlight"))
     sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -4)
+    sub:SetPoint("RIGHT", name) -- sin esto, una línea larga se sale de la página y pisa el lomo
+    sub:SetWordWrap(false)
     self.subText = sub
 
     local since = numeric(ink(page, "GameFontHighlightSmall", INK_SOFT))
@@ -874,7 +884,9 @@ function UI:BuildPage()
     self.portraitFrame = portrait
     feed:SetFrameStrata("HIGH")
     feed:SetFrameLevel(self.frame:GetFrameLevel() + 30)
-    feed:RegisterForClicks("AnyUp")
+    -- El cliente moderno dispara los botones seguros al pulsar (CVar ActionButtonUseKeyDown, activada por defecto):
+    -- registrando solo "AnyUp" no ocurría nada.
+    feed:RegisterForClicks("AnyUp", "AnyDown")
     feed.icon = feed:CreateTexture(nil, "BACKGROUND")
     feed.icon:SetSize(30, 30)
     feed.icon:SetPoint("CENTER")
@@ -885,11 +897,14 @@ function UI:BuildPage()
     -- La cantidad, con la fuente de pilas del juego (blanca y con contorno): la tinta oscura no se lee sobre el icono.
     feed.count = feed:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     feed.count:SetPoint("BOTTOMRIGHT", -1, 1)
-    feed:SetScript("PreClick", function() UI:RefreshFeed(true) end)
+    feed:SetScript("PreClick", function()
+        UI:RefreshFeed(true)
+        ns.dbg(("alimentar: clic, comida=%s"):format(tostring(feed.foodId))) -- temporal, para /vinculo debug
+    end)
     feed:SetScript("OnEnter", function(s)
         GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
         if s.foodId then
-            GameTooltip:SetText(L.FEED_TIP:format(select(1, GetItemInfo(s.foodId)) or ("#" .. s.foodId)))
+            GameTooltip:SetText(L.FEED_TIP:format(select(1, ns.ItemInfo(s.foodId)) or ("#" .. s.foodId)))
         else
             GameTooltip:SetText(L.FEED_NONE)
         end
@@ -899,7 +914,7 @@ function UI:BuildPage()
     feed:Hide()
     self.feed = feed
 
-    self.pageWidgets = { portrait, share, export, retire, delete, note, box, head }
+    self.pageWidgets = { portrait, share, self.cardIcon, export, retire, delete, note, box, head }
     self.pageWidgets[#self.pageWidgets + 1] = self.statBox
 end
 
@@ -970,7 +985,7 @@ function UI:RefreshList(keys)
     wr.icon:SetTexture(WISH_ICON)
     wr.glow:SetShown(on)
     wr:Show()
-    self.listEmpty:SetShown(#keys == 0)
+    self.listEmpty:SetShown(#keys == 0 and not on)
 end
 
 -- Historia: línea de tiempo con nodos. Los hitos llevan anillo y letra oscura; lo menor, un punto pequeño.
@@ -980,8 +995,10 @@ local EVENT_ICON = {
     EV_ACHIEVEMENT = "Spell_Holy_DivineIntervention", EV_LEVEL = "Ability_Hunter_BeastMastery",
     EV_ZONE = "INV_Misc_Map_01", EV_DUNGEON = "INV_Misc_Map02", EV_FALL = "INV_Misc_Bone_HumanSkull_01",
     EV_REVIVE = "Ability_Hunter_BeastSoothe", EV_RENAMED = "INV_Scroll_03", EV_LOYALTY = "Ability_Hunter_BeastTaming",
+    EV_ABANDONED = "INV_Misc_Bone_HumanSkull_01",
 }
 local EVENT_BIG = {
+    EV_ABANDONED = true,
     EV_TAMED = true, EV_FIRST_SEEN = true, EV_STABLE_FOUND = true, EV_BOSS = true,
     EV_ANNIVERSARY = true, EV_WISH_DONE = true, EV_ACHIEVEMENT = true,
 }
@@ -1334,7 +1351,7 @@ function UI:RefreshWishView()
     if self.achHead then self.achHead:Hide(); self.achNext:Hide() end
     for _, row in ipairs(self.wishRows) do row:Hide() end
     self.nameText:SetText(L.TAB_BESTIARY)
-    self.sinceText:SetText("")
+    self.sinceText:SetText((self.listKeys and #self.listKeys > 0) and "" or L.NO_PETS_HINT)
     self.tagText:SetText("")
     self.likesText:SetText("")
     self.wishTitle:Show()
@@ -1421,10 +1438,12 @@ function UI:RefreshFeed(show)
     self:PlaceFeed()
     local bag, slot, id = ns:BestFood()
     b.foodId = id
-    b:SetAttribute("type1", id and "spell" or nil)
-    b:SetAttribute("spell1", id and 6991 or nil) -- Feed Pet
-    b:SetAttribute("target-bag1", bag)
-    b:SetAttribute("target-slot1", slot)
+    -- Macro, la forma habitual de alimentar: lanza Alimentar mascota (6991) y usa la comida sobre ella.
+    -- (Antes: type=spell con target-bag/target-slot; el botón no respondía en Forever, causa sin confirmar.)
+    local info = C_Spell and C_Spell.GetSpellInfo and ns.safe(C_Spell.GetSpellInfo, 6991)
+    local spellName = (type(info) == "table" and info.name) or "Feed Pet"
+    b:SetAttribute("type1", id and "macro" or nil)
+    b:SetAttribute("macrotext1", id and ("/cast " .. spellName .. "\n/use item:" .. id) or nil)
     local icon = id and ((C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)) or (GetItemIcon and GetItemIcon(id)))
     b.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_Food_14")
     local n = id and ((C_Item and C_Item.GetItemCount and C_Item.GetItemCount(id)) or (GetItemCount and GetItemCount(id))) or 0
@@ -1438,6 +1457,11 @@ function UI:Refresh()
 
     local keys = sortedKeys()
     if self.selectedKey ~= WISH_KEY and not ns:GetPet(self.selectedKey) then
+        self.selectedKey = (ns:GetPet(ns.activeKey) and ns.activeKey) or keys[1]
+        -- Sin mascotas, el libro se abre en el Bestiario (lo único que ya se puede usar); autoWish lo suelta al llegar la primera.
+        if not self.selectedKey then self.selectedKey, self.autoWish = WISH_KEY, true end
+    elseif self.autoWish and keys[1] then
+        self.autoWish = nil
         self.selectedKey = (ns:GetPet(ns.activeKey) and ns.activeKey) or keys[1]
     end
     self:RefreshList(keys)
@@ -1473,7 +1497,8 @@ function UI:Refresh()
     if not ok then self.portraitIcon:SetTexture(petIcon(pet)) end
     self.nameText:SetText(pet.name)
     local sub = (pet.family or L.FAMILY_UNKNOWN) .. " · " .. L.LEVEL:format(pet.level or 1)
-    if pet.loyaltyText then sub = sub .. " · " .. pet.loyaltyText end
+    -- Forever da "(Nivel de lealtad 1) Rebelde": el paréntesis sobra y ensancha la línea hasta el lomo del libro.
+    if pet.loyaltyText then sub = sub .. " · " .. (pet.loyaltyText:gsub("^%b()%s*", "")) end
     -- El ánimo solo vale para la que está contigo; el de las demás sería viejo.
     if isActive and pet.happiness then sub = sub .. " · " .. HAPPY_COLOR[pet.happiness] .. L.HAPPINESS[pet.happiness] .. "|r" end
     self.subText:SetText(sub)
@@ -1483,17 +1508,24 @@ function UI:Refresh()
     self.sinceText:SetText(since)
     local tags = {}
     if pet.retired then
-        tags[#tags + 1] = "|cff7a6a50" .. L.RETIRED_TAG .. "|r"
+        tags[#tags + 1] = "|cff7a6a50" .. (pet.abandoned and L.ABANDONED_TAG or L.RETIRED_TAG) .. "|r"
+    elseif pet.pendingFall and (isActive or ns.lastKey == pet.key) then
+        -- Murió y sigue sin revivir (Core la marca al caer y la suelta al revivirla).
+        tags[#tags + 1] = "|cff8a290d" .. L.FALLEN_TAG .. "|r"
     elseif isActive then
         tags[#tags + 1] = "|cff2f5a12" .. L.ACTIVE_TAG .. "|r"
-    elseif pet.stabled then
-        tags[#tags + 1] = "|cff7a6a50" .. L.STABLED_TAG .. "|r"
+    else
+        -- Fuera de tu lado: en el establo, o despedida un rato (aún no pasó por el establo).
+        tags[#tags + 1] = "|cff7a6a50" .. (pet.stabled and L.STABLED_TAG or L.RESTING_TAG) .. "|r"
     end
     self.personalityName, self.personalityDesc = nil, nil
     if ns.db.opt.personality then
         local name, desc = ns:GetPersonality(pet)
-        self.personalityName, self.personalityDesc = name, desc
-        tags[#tags + 1] = "|cff8a290d" .. name .. "|r"
+        -- "Aún os estáis conociendo" habla de algo en marcha: no tiene sentido con la mascota fuera.
+        if isActive or name ~= L.PERSONALITY.newcomer[1] then
+            self.personalityName, self.personalityDesc = name, desc
+            tags[#tags + 1] = "|cff8a290d" .. name .. "|r"
+        end
     end
     self.tagText:SetText(table.concat(tags, "  ·  "))
     self.likesText:SetText(table.concat(ns:GetLikes(pet), "  ·  "))
@@ -1556,6 +1588,7 @@ function UI:Refresh()
         self.note:SetText(pet.note or "")
     end
     self.noteHint:SetShown((pet.note or "") == "" and not self.note:HasFocus())
+    self.retireButton:SetShown(not pet.abandoned) -- una mascota abandonada no vuelve
     self.retireButton:SetText(pet.retired and L.BTN_UNRETIRE or L.BTN_RETIRE)
     self.retireButton:SetWidth(self.retireButton.label:GetStringWidth() + 2)
 end
@@ -1619,6 +1652,194 @@ function UI:Export(pet)
     e:Show()
     e.box:SetFocus()
     e.box:HighlightText()
+end
+
+------------------------------------------------------------------------
+-- Páginas sueltas con el arte del libro: la tarjeta para compartir (Media/Card, 512×1024) y el resumen
+-- semanal (Media/Week, 512×256). Se mueven arrastrando; Esc o clic derecho las cierran.
+------------------------------------------------------------------------
+
+local function loosePage(name, texture, w, h)
+    local f = CreateFrame("Frame", name, UIParent)
+    f:SetSize(w, h)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true)
+    f:SetMovable(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetScript("OnMouseUp", function(s, button) if button == "RightButton" then s:Hide() end end)
+    tinsert(UISpecialFrames, name)
+    local bg = f:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetTexture(MEDIA .. texture)
+    f:Hide()
+    return f
+end
+
+-- Cifra grande en Morpheus (como los títulos del libro) con su etiqueta debajo.
+local function bigStat(parent, x, y, size)
+    -- Fuente de los números del libro: Morpheus dibuja "1m" como "1M" con rasgos de mayúscula.
+    local num = numeric(ink(parent, "GameFontNormalHuge"))
+    local path = num:GetFont()
+    if path then pcall(num.SetFont, num, path, size, "") end
+    num:SetPoint("TOP", parent, "TOPLEFT", x, y)
+    local label = ink(parent, "GameFontHighlightSmall", INK_SOFT)
+    label:SetPoint("TOP", num, "BOTTOM", 0, -1)
+    return num, label
+end
+
+local function centered(parent, font, color, y)
+    local fs = ink(parent, font, color)
+    fs:SetPoint("TOP", parent, "TOP", 0, y)
+    fs:SetJustifyH("CENTER")
+    return fs
+end
+
+-- Pone el texto con la letra de título al tamaño pedido, o más pequeño si no cabe en maxW (nombres largos).
+local function fitTitle(fs, text, size, maxW)
+    fs:SetText(text)
+    titleFont(fs, size)
+    local w = fs:GetStringWidth() or 0
+    if w > maxW then titleFont(fs, math.max(12, math.floor(size * maxW / w))) end
+end
+
+local CARD_W, CARD_H = 250, 390
+local function buildCard()
+    local c = loosePage("VinculoCardFrame", "Card", CARD_W, CARD_H)
+    -- Retrato: el mismo anillo del libro, más grande que el hueco de la página para taparlo.
+    local RING = 72
+    local hole = RING * 0.74
+    local portrait = CreateFrame("Frame", nil, c)
+    portrait:SetSize(RING, RING)
+    portrait:SetPoint("TOP", 0, -26)
+    local dark = portrait:CreateTexture(nil, "BACKGROUND")
+    dark:SetSize(hole + 6, hole + 6)
+    dark:SetPoint("CENTER")
+    dark:SetTexture(MEDIA .. "Circle")
+    dark:SetVertexColor(0.1, 0.07, 0.04, 1)
+    c.icon = portrait:CreateTexture(nil, "ARTWORK")
+    c.icon:SetSize(hole, hole)
+    c.icon:SetPoint("CENTER")
+    round(c.icon)
+    local ringFrame = CreateFrame("Frame", nil, portrait)
+    ringFrame:SetAllPoints()
+    ringFrame:SetFrameLevel(portrait:GetFrameLevel() + 5)
+    local ring = ringFrame:CreateTexture(nil, "OVERLAY")
+    ring:SetAllPoints()
+    ring:SetTexture(MEDIA .. "Ring128")
+
+    c.name = centered(c, "GameFontNormalHuge", nil, -108)
+    c.name:SetWidth(CARD_W - 56)
+    c.name:SetWordWrap(false)
+    c.sub = centered(c, "GameFontHighlight", INK_SOFT, -140)
+    local top = line(c)
+    top:SetPoint("TOPLEFT", 34, -164)
+    top:SetPoint("TOPRIGHT", -34, -164)
+    c.nums, c.labels = {}, {}
+    for i = 1, 4 do
+        local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+        c.nums[i], c.labels[i] = bigStat(c, 78 + col * 94, -176 - row * 62, 28)
+    end
+    c.labels[1]:SetText(L.CARD_FIGHTS)
+    c.labels[2]:SetText(L.CARD_TIME)
+    c.labels[3]:SetText(L.CARD_ZONES)
+    c.labels[4]:SetText(L.CARD_ACH)
+    local bottom = line(c)
+    bottom:SetPoint("TOPLEFT", 34, -298)
+    bottom:SetPoint("TOPRIGHT", -34, -298)
+    c.since = centered(c, "GameFontHighlightSmall", INK_SOFT, -308)
+    c.brand = centered(c, "GameFontNormalSmall", INK_RED, -338)
+    c.brand:SetText("VÍNCULO")
+    -- La X solo se ve con el ratón encima, para que no salga en la captura.
+    local close = CreateFrame("Button", nil, c)
+    close:SetSize(18, 18)
+    close:SetPoint("TOPRIGHT", -26, -26)
+    local x = close:CreateTexture(nil, "ARTWORK")
+    x:SetAllPoints()
+    x:SetTexture(MEDIA .. "Cross")
+    close:SetScript("OnClick", function() c:Hide() end)
+    close:SetAlpha(0)
+    -- IsMouseOver (método del marco, declarado en Forever); la global MouseIsOver no lo está y daba un error por fotograma.
+    c:SetScript("OnUpdate", function(s) close:SetAlpha(s:IsMouseOver() and 1 or 0) end)
+    return c
+end
+
+function UI:Card(pet)
+    if not pet then return end
+    local c = self.card
+    if not c then
+        c = buildCard()
+        self.card = c
+    end
+    local earned = 0
+    for _ in pairs(pet.achievements) do earned = earned + 1 end
+    c.icon:SetTexture(petIcon(pet))
+    fitTitle(c.name, pet.name, 26, CARD_W - 56)
+    c.sub:SetText((pet.family or L.FAMILY_UNKNOWN) .. " · " .. L.LEVEL:format(pet.level or 1))
+    c.nums[1]:SetText(pet.stats.victories)
+    c.nums[2]:SetText(ns.FormatTime(pet.stats.timeTogether))
+    c.nums[3]:SetText(pet.zoneCount)
+    c.nums[4]:SetText(earned .. "/" .. #ns.ACHIEVEMENTS)
+    -- Solo se dice "juntos desde" si la domesticaste con el addon activo (igual que la ficha).
+    c.since:SetText((pet.tamed and L.TOGETHER_SINCE or L.DIARY_SINCE):format(date_(pet.created)))
+    -- El libro se cierra para dejar sitio a la captura.
+    if self.frame then self.frame:Hide() end
+    c:Show()
+end
+
+local WEEK_W, WEEK_H = 360, 180
+local function buildWeek()
+    local w = loosePage("VinculoWeekFrame", "Week", WEEK_W, WEEK_H)
+    -- La tira de cuero cuelga del centro (hasta ~1/3 de la altura): el título va debajo.
+    w.title = centered(w, "GameFontNormalHuge", nil, -62)
+    w.title:SetWidth(WEEK_W - 60)
+    w.title:SetWordWrap(false)
+    w.nums, w.labels = {}, {}
+    for i = 1, 3 do
+        w.nums[i], w.labels[i] = bigStat(w, 70 + (i - 1) * 110, -88, 24)
+    end
+    w.labels[1]:SetText(L.CARD_FIGHTS)
+    w.labels[2]:SetText(L.WEEK_BOSSES_LABEL)
+    w.labels[3]:SetText(L.CARD_TIME)
+    w.zones = centered(w, "GameFontHighlightSmall", INK_SOFT, -128)
+    local function action(label, point, x, onClick)
+        local b = CreateFrame("Button", nil, w)
+        local fs = ink(b, "GameFontHighlightSmall", INK_SOFT)
+        fs:SetPoint("CENTER")
+        fs:SetText(label)
+        b:SetSize(fs:GetStringWidth() + 4, 16)
+        b:SetPoint(point, w, point, x, 16)
+        b:SetScript("OnEnter", function() fs:SetTextColor(unpack(INK_RED)) end)
+        b:SetScript("OnLeave", function() fs:SetTextColor(unpack(INK_SOFT)) end)
+        b:SetScript("OnClick", onClick)
+    end
+    action(L.WEEK_NEVER, "BOTTOMLEFT", 32, function()
+        ns.db.opt.weekly = false
+        w:Hide()
+        UI:Refresh()
+    end)
+    action(L.BTN_CLOSE, "BOTTOMRIGHT", -32, function() w:Hide() end)
+    return w
+end
+
+-- Enseña el último resumen guardado (ns.charDB.lastWeek, que escribe CheckWeek).
+function UI:Week()
+    local rec = ns.charDB and ns.charDB.lastWeek
+    if not rec then return ns:Print(L.NO_WEEK) end
+    local w = self.week
+    if not w then
+        w = buildWeek()
+        self.week = w
+    end
+    fitTitle(w.title, L.WEEK_TITLE:format(rec.name), 20, WEEK_W - 60)
+    w.nums[1]:SetText(rec.v)
+    w.nums[2]:SetText(rec.b)
+    w.nums[3]:SetText(ns.FormatTime(rec.t))
+    w.zones:SetText(rec.z > 0 and ((rec.z == 1 and L.WEEK_ZONE or L.WEEK_ZONES):format(rec.z)) or "")
+    w:Show()
+    fadeIn(w, 0.4)
 end
 
 function UI:Toggle()

@@ -76,7 +76,7 @@ Estado de las APIs según esa fuente (declarada no significa probada en el juego
 - [x] Tooltip de bestias (lista, familia, habilidad que enseña), aviso al avistar una bestia de la lista, opción sin animaciones. Pendiente de ver todo en Forever.
 - [x] Alimentar: insignia junto al retrato con la mejor comida de las bolsas (Forever: CanPetEatItem; MoP/Era: respaldo con Foods.lua).
 - [ ] Opcional (descartado por ahora): más de una zona por bestia. Wowhead Classic bloquea las descargas (403); haría falta un volcado de NPC de un emulador.
-- [ ] Pendiente: botón "Ver en mapa" (`WorldMapFrame:SetMapID`, sin verificar), datos para MoP/Forever, flechas del teclado en la lista, 5 uiMapID sin verificar (1417, 1422, 1423, 1435, 1447).
+- [ ] Pendiente: botón "Ver en mapa" (`WorldMapFrame:SetMapID`, sin verificar), datos para MoP/Forever, flechas del teclado en la lista (hecho en 0.1.2, sin ver en el juego). Los 5 uiMapID (1417, 1422, 1423, 1435, 1447) quedaron verificados en Forever el 2026-11-05.
 - [x] Versión 0.1.1, `LICENSE` (MIT, con las licencias de las fuentes) y zip para Forever en `dist/Vinculo-0.1.1.zip` (solo `Vinculo.toc`; sin los TOC de MoP y Era). Sin subir: primero probar en Forever.
 - [x] Aviso de logro con la plantilla nativa del juego (cartel, animación y apilado) con el logo de Vínculo en el sitio del escudo; respaldo: panel propio. `/vinculo aviso` lo prueba. Confirmado en MoP; falta Forever.
 - [x] Arreglada la ficha duplicada al cambiar el idioma del cliente (la familia se compara por clave).

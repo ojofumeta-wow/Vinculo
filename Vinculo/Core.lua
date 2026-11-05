@@ -3,7 +3,8 @@ local L = ns.L
 
 local SPELL_FEED_PET = 6991
 local SPELL_REVIVE_PET = 982
-local SPELL_TAME_BEAST = 1515
+-- 1515 es el ID clásico; 1278028 es "Domesticar bestia" en Forever (confirmado con C_Spell.GetSpellInfo el 2026-11-05).
+local SPELL_TAME_BEAST = { [1515] = true, [1278028] = true }
 local SPELL_DISMISS_PET = 2641
 local MAX_TIMELINE = 300
 local TICK = 15
@@ -20,6 +21,7 @@ local DEFAULT_OPTIONS = {
     noanim = false,     -- sin animaciones (más ligero)
     beastAlert = true,  -- avisar al ver una bestia de tu lista de deseos
     beastTip = true,    -- datos de la bestia en su tooltip
+    mapPins = true,     -- marcas de tus bestias deseadas en el mapa del mundo
 }
 local PREY_MILESTONES = { [10] = true, [25] = true, [50] = true, [100] = true, [250] = true, [500] = true, [1000] = true }
 
@@ -51,6 +53,21 @@ local combat -- estado del combate en curso
 local lastTick
 local lastTameCast = 0
 local dismissedAt = 0
+
+-- Diagnóstico temporal (/vinculo debug): hechizos lanzados, entradas y salidas de combate, y por qué se contó o no una victoria.
+local dbgLog = {}
+local function dbg(text)
+    dbgLog[#dbgLog + 1] = ("%.0f %s"):format(GetTime(), text)
+    if #dbgLog > 40 then table.remove(dbgLog, 1) end
+end
+
+ns.dbg = dbg
+
+-- GetItemInfo vive en C_Item en el cliente moderno; la global puede no existir en Forever.
+function ns.ItemInfo(id)
+    local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if f then return f(id) end
+end
 
 ns.activeKey = nil -- mascota invocada ahora mismo
 ns.lastKey = nil   -- última mascota que estuvo contigo (para Revivir mascota)
@@ -188,6 +205,11 @@ local function rekey(pet, key)
         if k == pet.key then charDB.order[i] = key break end
     end
     if charDB.lastKey == pet.key then charDB.lastKey = key end
+    -- La foto del resumen semanal también va por clave: sin moverla, el cambio parecería toda la vida de la mascota.
+    local week = charDB.week
+    if week and week.pets and week.pets[pet.key] then
+        week.pets[key], week.pets[pet.key] = week.pets[pet.key], nil
+    end
     pet.key = key
     charDB.pets[key] = pet
 end
@@ -217,7 +239,19 @@ function ns:SetRetired(pet, retired)
     self:Changed()
 end
 
+-- "Abandonar mascota" la suelta para siempre: queda en el recuerdo, y ninguna mascota nueva la reactiva.
+function ns:PetAbandoned()
+    self.dbg("abandonar mascota (PetAbandon)")
+    local pet = self:GetPet(self.activeKey or self.lastKey)
+    if not pet or pet.abandoned then return end
+    pet.abandoned, pet.retired = true, true
+    self:Log(pet, "EV_ABANDONED", pet.name)
+    if self.activeKey == pet.key then self.activeKey = nil end
+    self:Changed()
+end
+
 function ns:DeletePet(pet)
+    self:KeepInCodex(pet)
     charDB.pets[pet.key] = nil
     for i, k in ipairs(charDB.order) do
         if k == pet.key then table.remove(charDB.order, i) break end
@@ -339,6 +373,7 @@ function ns:RefreshPet()
         pet.loyalty = loyalty
         local justTamed = (GetTime() - lastTameCast) < 120 or loyalty == 1
         pet.tamed = justTamed or nil
+        dbg(("mascota nueva: domada=%s, hace %.0f s del último Domar bestia, lealtad=%s"):format(tostring(justTamed), GetTime() - lastTameCast, tostring(loyalty)))
         self:Log(pet, justTamed and "EV_TAMED" or "EV_FIRST_SEEN", name, pet.metZone)
         if justTamed then self:CompleteWish(pet) end
         greet = justTamed and "tamed" or "hello"
@@ -444,6 +479,12 @@ function events.PLAYER_LOGIN()
     }) do
         pcall(frame.RegisterEvent, frame, e)
     end
+    -- Abandonar mascota: Forever declara C_PetInfo.PetAbandon; la global antigua también se vigila.
+    if hooksecurefunc then
+        for _, tbl in ipairs({ C_PetInfo or {}, _G }) do
+            if type(tbl.PetAbandon) == "function" then pcall(hooksecurefunc, tbl, "PetAbandon", function() ns:PetAbandoned() end) end
+        end
+    end
     lastTick = GetTime()
     C_Timer.NewTicker(TICK, tickTime)
     -- Solo se presenta la primera vez; después no ensucia el chat.
@@ -505,12 +546,6 @@ function events.UNIT_HEALTH(unit)
     end
 end
 
--- Diagnóstico temporal (/vinculo debug): últimas entradas y salidas de combate y por qué se contó o no una victoria.
-local dbgLog = {}
-local function dbg(text)
-    dbgLog[#dbgLog + 1] = ("%.0f %s"):format(GetTime(), text)
-    if #dbgLog > 12 then table.remove(dbgLog, 1) end
-end
 
 function events.PLAYER_REGEN_DISABLED()
     inCombat = true
@@ -573,7 +608,8 @@ end
 
 function events.UNIT_SPELLCAST_SUCCEEDED(unit, _, spellID)
     if unit ~= "player" or isSecret(spellID) then return end
-    if spellID == SPELL_TAME_BEAST then
+    dbg("hechizo " .. tostring(spellID)) -- temporal: confirma el ID de Domar bestia en Forever
+    if SPELL_TAME_BEAST[spellID] then
         lastTameCast = GetTime()
     elseif spellID == SPELL_DISMISS_PET then
         dismissedAt = GetTime()
@@ -661,18 +697,16 @@ SlashCmdList.VINCULO = function(msg)
         ns:Changed()
     elseif msg == "compartir" or msg == "share" then
         ns:Share(ns:GetPet(ns.activeKey or ns.lastKey))
+    elseif msg == "tarjeta" or msg == "card" then
+        ns.UI:Card(ns:GetPet(ns.activeKey or ns.lastKey))
+    elseif msg == "semana" or msg == "week" then
+        ns.UI:Week()
     elseif msg == "exportar" or msg == "export" then
         ns.UI:Export(ns:GetPet(ns.activeKey or ns.lastKey))
     elseif msg == "aviso" or msg == "test" then
         -- Enseña el aviso de logro con un logro de prueba (para ver cómo queda).
         local pet = ns:GetPet(ns.activeKey or ns.lastKey)
         if pet then ns.UI:Toast(pet, (ns:AchievementText("victory_1")), "Interface\\Icons\\Ability_Hunter_Pet_Wolf") end
-    elseif msg == "tip" then
-        -- Diagnóstico temporal del tooltip de bestias: ejecuta la lógica sobre tu objetivo y dice qué pasa.
-        local ok, err = pcall(ns.AddBeastLines, GameTooltip, "target")
-        ns:Print(("tip: ok=%s %s enganchado=%s nombre=%s familia=%s opcion=%s"):format(tostring(ok), ok and "" or tostring(err),
-            tostring(ns.tipHooked), tostring(safe(UnitName, "target")), tostring(safe(UnitCreatureFamily, "target")),
-            tostring(ns.db.opt.beastTip)))
     elseif msg == "debug" then
         for _, line in ipairs(dbgLog) do ns:Print(line) end
         if #dbgLog == 0 then ns:Print("debug: sin combates todavía") end
