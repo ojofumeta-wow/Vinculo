@@ -19,3 +19,5 @@ Para cualquier API del juego, usa la skill `vinculo-forever` antes de escribir c
 - Cambios mínimos: no reformatees ni reescribas código que no toca la tarea.
 - Si la tarea es de investigar, delega a un subagente y trae solo la conclusión.
 - Tras cambiar Lua, ejecuta los tests; no digas que funciona en el juego sin que yo lo confirme.
+
+- Si fallas dos veces seguidas en lo mismo (tests o el mismo error), para y dime que pruebe Opus.

@@ -83,6 +83,26 @@ Estado de las APIs según esa fuente (declarada no significa probada en el juego
 - [x] CurseForge: los zip hechos con `tar` se rechazaron sin motivo; el generado con `docs/build-zip.js` (jszip, comprimido) fue **aprobado** (0.1.1b).
 - [ ] Pendiente: página de CurseForge (`CURSEFORGE.md` (raíz)) y capturas.
 
+### 5 de noviembre de 2026 (versión 0.1.3, publicada en GitHub y CurseForge, tag `v0.1.3`)
+- [x] Tarjeta para compartir (`/vinculo tarjeta`, icono junto al engranaje), resumen semanal en ventana (`/vinculo semana`), Bestiario sin mascota, estados Caída / Descansando / Abandonada / En el establo, Códice del personaje, marcas de mapa con círculo de zona y opción para apagarlas, botón de alimentar con macro, ID de Domar bestia en Forever. Detalle en `CHANGELOG.md`.
+- [x] Confirmado en el juego: mapa, alimentar, tarjeta, domar. **Sin ver todavía:** la ventana del resumen semanal.
+
+### Pendiente para 0.1.4
+- [ ] **Aviso visual de bestia** (hoy es una línea de chat): panel propio con icono de familia, que respete las opciones de avisos, nunca en combate.
+- [ ] **Detección de abandono:** al abandonar o liberar sigue saliendo "Descansando". Usar `/vinculo debug` tras abandonar; puede estar relacionado el logro 5149 "Doma de bestias".
+- [ ] **Ficha duplicada** de una mascota retirada que se vuelve a llamar con otro GUID.
+- [ ] Quitar `or loyalty == 1` (comprobar primero que no rompe nada).
+- [ ] Quitar el registro temporal de depuración (`/vinculo debug`, líneas `dbg`, "alimentar: clic").
+- [ ] Revisar que los textos en inglés caben en la tarjeta y en el resumen.
+
+### Ideas para después (no pedidas todavía)
+- Catálogo visual del Bestiario con modelos 3D (empezar con una ventana de prueba de 12–24 bestias; datos de volcados CMaNGOS/AzerothCore, ojo con las licencias).
+- Burbuja de habla de la mascota (prototipo anclado a la placa de nombre).
+
+### Promoción (TikTok)
+- [x] Vídeo `dist/video/vinculo-tiktok-clip-qwen.mp4` (35 s, voz Qwen3-TTS) listo; lo sube el autor. Texto, hashtags y etiqueta de contenido IA: ver conversación/`dist/video`.
+- [ ] Segunda pasada con clips regrabados sin cursor (mapa, bestiario, aviso, primer plano de la mascota). Los scripts viven en el scratchpad de la sesión, no en el repo.
+
 **Antes de publicar (de la investigación):** `.pkgmeta` y `LICENSE` (con las licencias de las fuentes), quitar `Media/logo.png` y `Media/Ring.tga` del paquete, migración de `VinculoDB`, comprobar la línea `## Interface` de varios clientes, y capturas para la página.
 
 ---
