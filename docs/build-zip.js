@@ -2,10 +2,10 @@
 // Uso: instala jszip en una carpeta temporal (npm i jszip) y ejecuta: JSZIP=<ruta>/node_modules/jszip node docs/build-zip.js dist/Vinculo-X.Y.Z.zip
 const fs = require("fs"), path = require("path");
 const JSZip = require(process.env.JSZIP || "jszip");
-const root = "C:/Users/Javier/Desktop/WoW Addons/Vinculo/Vinculo";
+const root = path.join(__dirname, "..", "Vinculo");
 const skip = new Set(["Vinculo_Mists.toc", "Vinculo_Vanilla.toc"]);
 const zip = new JSZip();
-const date = new Date("2026-11-04T12:00:00Z");
+const date = new Date();
 function walk(dir, rel) {
   for (const name of fs.readdirSync(dir).sort()) {
     if (rel === "Vinculo" && skip.has(name)) continue;
