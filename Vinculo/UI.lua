@@ -691,6 +691,10 @@ function UI:BuildPage()
         local hl = b:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(INK_RED[1], INK_RED[2], INK_RED[3], 0.15)
+        b.mark = b:CreateTexture(nil, "BACKGROUND")
+        b.mark:SetAllPoints()
+        b.mark:SetColorTexture(INK_RED[1], INK_RED[2], INK_RED[3], 0.25)
+        b.mark:Hide()
         b.text = ink(b, "GameFontHighlight")
         b.text:SetPoint("LEFT", 4, 0)
         b.hint = ink(b, "GameFontHighlightSmall", INK_SOFT)
@@ -711,7 +715,9 @@ function UI:BuildPage()
         seg = seg:gsub("^%s+", "")
         local list = segment <= 2 and ns:WishSuggestions(segment, seg, text:match("^([^,]*),")) or {}
         wish.sugBefore = before
+        wish.sugSel = nil
         for i, b in ipairs(sugRows) do
+            b.mark:Hide()
             b.item = list[i]
             b:SetShown(list[i] ~= nil)
             if list[i] then
@@ -726,7 +732,19 @@ function UI:BuildPage()
         wishHint:SetShown(s:GetText() == "")
         if userInput then refreshSuggestions() else sug:Hide() end
     end)
-    wish:SetScript("OnTabPressed", function() if sug:IsShown() and sugRows[1].item then accept(sugRows[1].item) end end)
+    wish:SetScript("OnTabPressed", function(s)
+        local row = sugRows[s.sugSel or 1]
+        if sug:IsShown() and row.item then accept(row.item) end
+    end)
+    -- Flechas arriba/abajo recorren las sugerencias; Tab elige la marcada (la primera si no hay ninguna).
+    wish:SetScript("OnArrowPressed", function(s, key)
+        if not sug:IsShown() or (key ~= "UP" and key ~= "DOWN") then return end
+        local n = 0
+        for _, b in ipairs(sugRows) do if b.item then n = n + 1 end end
+        local sel = ((s.sugSel or (key == "DOWN" and 0 or n + 1)) - 1 + (key == "DOWN" and 1 or -1)) % n + 1
+        s.sugSel = sel
+        for i, b in ipairs(sugRows) do b.mark:SetShown(i == sel) end
+    end)
     wish:SetScript("OnEditFocusLost", function()
         -- Un instante de espera: si se hizo clic en una sugerencia, esta se elige antes de cerrarse.
         C_Timer.After(0.2, function() if not wish:HasFocus() then sug:Hide() end end)
@@ -1459,8 +1477,9 @@ function UI:Refresh()
     -- El ánimo solo vale para la que está contigo; el de las demás sería viejo.
     if isActive and pet.happiness then sub = sub .. " · " .. HAPPY_COLOR[pet.happiness] .. L.HAPPINESS[pet.happiness] .. "|r" end
     self.subText:SetText(sub)
-    local since = L.TOGETHER_SINCE:format(date_(pet.created))
-    if pet.metZone then since = since .. " · " .. L.MET_IN:format(pet.metZone) end
+    -- Solo se dice "juntos desde" si la domesticaste con el addon activo; si no, la fecha es la de instalación.
+    local since = (pet.tamed and L.TOGETHER_SINCE or L.DIARY_SINCE):format(date_(pet.created))
+    if pet.tamed and pet.metZone then since = since .. " · " .. L.MET_IN:format(pet.metZone) end
     self.sinceText:SetText(since)
     local tags = {}
     if pet.retired then

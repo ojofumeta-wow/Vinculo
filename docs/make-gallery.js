@@ -14,19 +14,19 @@ const INK = "#3a1f0c", RED = "#8a2410";
 // side: lado de la foto. notes: líneas de texto + punto de la captura (fx, fy en 0..1) al que apunta la flecha.
 const slides = [
   { file: "01-ficha-historia", out: "01-ficha-historia", n: "I", side: "R", rot: -1.2, title: "Vínculo", sub: ["Your hunter pet's story,", "in a leather-bound journal."],
-    notes: [{ t: ["Where and when", "you first met"], fx: .34, fy: .25 }, { t: ["A page for every pet:", "stats with a story each"], fx: .31, fy: .40 }] },
+    notes: [{ t: ["Where and when", "you first met"], fx: .352, fy: .2516, rx: 30 }, { t: ["A page for every pet:", "stats with a story each"], fx: .3705, fy: .365 }] },
   { file: "02-bestiario-autocompletar", out: "02-bestiario-autocompletar", n: "II", side: "R", rot: 1.1, title: "Bestiary", sub: ["Plan your next tame."],
-    notes: [{ t: ["Type \"wolf\" and pick one:", "the zone fills in itself"], fx: .30, fy: .52 }, { t: ["The Codex fills in", "as you meet each family"], fx: .70, fy: .52 }] },
+    notes: [{ t: ["Type \"wolf\" and pick one:", "the zone fills in itself"], fx: .194, fy: .306, rx: 24 }, { t: ["The Codex fills in", "as you meet each family"], fx: .8106, fy: .50 }] },
   { file: "06-ver-mapa", out: "03-ver-mapa", n: "III", side: "L", rot: -1.1, title: "Show on map", sub: ["From your wish list", "to the world map."],
-    notes: [{ t: ["One click opens the map", "right at the zone"], fx: .77, fy: .385 }, { t: ["...and marks it with", "the Vínculo icon"], fx: .52, fy: .73 }] },
+    notes: [{ t: ["One click opens the map", "right at the zone"], fx: .893, fy: .384, ring: false }, { t: ["...and marks it with", "the Vínculo icon"], fx: .5227, fy: .726 }] },
   { file: "03-logros-tooltip", out: "04-logros", n: "IV", side: "L", rot: 1, title: "Achievements", sub: ["21 medals of their own."],
-    notes: [{ t: ["Your first medal,", "earned on day one"], fx: .553, fy: .325, bow: -150 }, { t: ["Hover any medal", "to see its progress"], fx: .89, fy: .395 }] },
+    notes: [{ t: ["Your first medal,", "earned on day one"], fx: .553, fy: .325, bow: -150 }, { t: ["Hover any medal", "to see its progress"], fx: .977, fy: .395, ring: false }] },
   { file: "07-tooltip-bestia", out: "05-tooltip-bestia", n: "V", side: "R", rot: 1.2, ring: false, title: "Beast tooltips", sub: ["Know before you tame."],
-    notes: [{ t: ["Is it on your wish list?"], fx: .55, fy: .85 }, { t: ["Which pet skill", "it teaches"], fx: .55, fy: .90 }, { t: ["Do you already own", "its family?"], fx: .55, fy: .945 }] },
+    notes: [{ t: ["Is it on your wish list?"], fx: .56, fy: .85 }, { t: ["Which pet skill", "it teaches"], fx: .56, fy: .90 }, { t: ["Do you already own", "its family?"], fx: .56, fy: .945 }] },
   { file: "05-aviso-logro", out: "06-aviso-logro", n: "VI", side: "R", rot: -1, title: "Achievement alerts", sub: ["Styled like the game's own banner."],
-    notes: [{ t: ["Turn it off any time", "in the settings"], fx: .868, fy: .12 }, { t: ["Same banner as the game,", "with the Vínculo logo"], fx: .55, fy: .91 }] },
+    notes: [{ t: ["Turn it off any time", "in the settings"], fx: .868, fy: .12 }, { t: ["Same banner as the game,", "with the Vínculo logo"], fx: .4065, fy: .914, ring: false }] },
   { file: "04-viajes", out: "07-viajes", n: "VII", side: "L", rot: 1.1, title: "Journeys", sub: ["Every zone you have", "walked together."],
-    notes: [{ t: ["Grouped by continent,", "with the day of your visit"], fx: .64, fy: .21 }, { t: ["A tab of its own", "in the journal"], fx: .82, fy: .14 }] },
+    notes: [{ t: ["Grouped by continent,", "with the day of your visit"], fx: .637, fy: .216, rx: 40 }, { t: ["A tab of its own", "in the journal"], fx: .82, fy: .14 }] },
 ];
 
 const W = 1280, H = 720;
@@ -98,9 +98,9 @@ for (const s of slides) {
     const sx = s.side === "L" ? colX - 12 : colX + w + 12, sy = ny - 8 + (nt.t.length - 1) * 10;
     const mx = (sx + tx) / 2, my = (sy + ty) / 2 + (nt.bow !== undefined ? nt.bow : i % 2 ? 46 : -46);
     // la flecha acaba un poco antes del punto, que se rodea con un círculo a mano
-    const ex = tx + (sx - tx) * 0.04, ey = ty + (sy - ty) * 0.04;
-    if (s.ring !== false) g += `<ellipse cx="${tx}" cy="${ty}" rx="17" ry="12" fill="none" stroke="${RED}" stroke-width="2.6" transform="rotate(-14 ${tx} ${ty})"/>`;
-    g += `<path d="M${sx},${sy} Q${mx},${my} ${ex + (sx > tx ? 14 : -14)},${ey}" fill="none" stroke="${RED}" stroke-width="2.8" stroke-linecap="round" marker-end="url(#ah)"/>`;
+    const k = s.ring === false || nt.ring === false ? 0.004 : 0.04, ex = tx + (sx - tx) * k, ey = ty + (sy - ty) * k;
+    if (s.ring !== false && nt.ring !== false) g += `<ellipse cx="${tx}" cy="${ty}" rx="${nt.rx || 17}" ry="12" fill="none" stroke="${RED}" stroke-width="2.6" transform="rotate(-14 ${tx} ${ty})"/>`;
+    g += `<path d="M${sx},${sy} Q${mx},${my} ${ex + (sx > tx ? 1 : -1) * (s.ring === false || nt.ring === false ? 6 : 14)},${ey}" fill="none" stroke="${RED}" stroke-width="2.8" stroke-linecap="round" marker-end="url(#ah)"/>`;
   });
 
   // sello de marca

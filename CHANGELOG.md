@@ -5,6 +5,10 @@
 ### Fixed
 - Journeys: continents are no longer duplicated after changing the game language (this also merges older entries saved in the other language).
 
+### Changed
+- Pet card: "Together since" now only shows for pets you tamed with the addon active; pets you already had show "Journal since".
+- Wishes: up/down arrows move through the suggestions, and Tab picks the highlighted one.
+
 ### Known issues
 - If you change the game language, zone names may appear twice in Journeys.
 - Each beast has a single zone in the Bestiary, and the data is for Classic.
@@ -14,6 +18,10 @@
 
 ### Corregido
 - Viajes: los continentes ya no se duplican al cambiar el idioma del juego (también une los datos antiguos guardados en el otro idioma).
+
+### Cambiado
+- Ficha de la mascota: "Juntos desde" solo sale en las que domesticaste con el addon activo; las que ya tenías muestran "Diario desde".
+- Deseos: las flechas arriba/abajo recorren las sugerencias y Tab elige la marcada.
 
 ### Problemas conocidos
 - Si cambias el idioma del juego, los nombres de zona pueden salir duplicados en Viajes.
