@@ -60,6 +60,14 @@ local function top(t)
     return best, n
 end
 
+-- "Mordedura 2 · Garra 1": las habilidades que el libro de la mascota tenía la última vez que se leyó.
+function ns:GetSkillsText(pet)
+    if not pet.skills or #pet.skills == 0 then return end
+    local parts = {}
+    for _, s in ipairs(pet.skills) do parts[#parts + 1] = s.name .. " " .. s.rank end
+    return L.SKILLS_LINE:format(table.concat(parts, " · "))
+end
+
 -- Como mucho dos gustos, para que quepan en una línea de la ficha.
 function ns:GetLikes(pet)
     local likes = {}
@@ -992,14 +1000,31 @@ function ns:Codex()
     for _, pet in pairs(ns.charDB.pets) do
         if pet.tamed then beasts[fold(pet.beast or pet.name or "")] = true end
     end
-    local bTotal, bTamed, beastTamed = {}, {}, 0
+    local bTotal, bTamed, beastTamed, zt = {}, {}, 0, {}
     for _, b in ipairs(ns.BEASTS or {}) do
+        local got = beasts[fold(b.en)] or (b.es and beasts[fold(b.es)])
         bTotal[b.fam] = (bTotal[b.fam] or 0) + 1
-        if beasts[fold(b.en)] or (b.es and beasts[fold(b.es)]) then
+        if got then
             bTamed[b.fam] = (bTamed[b.fam] or 0) + 1
             beastTamed = beastTamed + 1
         end
+        for _, id in ipairs(b.zones or {}) do
+            local z = zt[id]
+            if not z then z = { id = id, tamed = 0, total = 0 }; zt[id] = z end
+            z.total = z.total + 1
+            if got then z.tamed = z.tamed + 1 end
+        end
     end
+    -- Zonas donde ya has domado alguna bestia, de más a menos avanzadas.
+    local zoneList = {}
+    for _, z in pairs(zt) do
+        z.name = z.tamed > 0 and zoneName(z.id)
+        if z.name then zoneList[#zoneList + 1] = z end
+    end
+    table.sort(zoneList, function(a, c)
+        if a.tamed ~= c.tamed then return a.tamed > c.tamed end
+        return a.name < c.name
+    end)
 
     local entries, isBase, baseTamed = {}, {}, 0
     for _, f in ipairs(ns.FAMILIES) do
@@ -1023,7 +1048,7 @@ function ns:Codex()
             kills = kills[k] or 0, since = tamed[k] }
     end
     return { entries = entries, baseTamed = baseTamed, baseTotal = #ns.FAMILIES, extraTamed = extraTamed,
-        pets = pets, prey = prey, typeCount = typeCount, beastTamed = beastTamed }
+        pets = pets, prey = prey, typeCount = typeCount, beastTamed = beastTamed, zones = zoneList }
 end
 
 -- Retos: objetivos propios que se calculan con lo que ya guarda el diario.

@@ -403,7 +403,7 @@ ns.UI.selectedKey = zarpa.key; ns.UI.tab = "story"; ns.UI:Refresh()
 local statRows = ns.UI:StatRows(zarpa)
 local trainingRow
 for _, r in ipairs(statRows) do if r[1] == ns.L.STAT_TRAINING then trainingRow = r[2] end end
-check(#statRows == 12 and trainingRow == "80 libres de 120" and ns.UI.subText._text:find("Contenta"), "la ficha muestra ánimo y entrenamiento")
+check(#statRows == 12 and trainingRow == "80 libres de 120" and ns.UI.tagText._text:find("Contenta"), "la ficha muestra ánimo y entrenamiento")
 -- Medallones y frase: las cifras esenciales, y lo que está a cero no se cuenta
 check(ns.UI.medals.victories._text == tostring(zarpa.stats.victories), "el medallón de combates lleva la cifra")
 local story = ns.UI.storyText._text
@@ -473,6 +473,11 @@ S.targetSecret = nil; S.target = oldTarget; S.zone = oldZone
 ns.UI.selectedKey = "wishes"; ns.UI:Refresh()
 check(ns.UI.wishRows[1]._shown and ns.UI.wishInput._shown and ns.UI.wishPage._shown, "los deseos pendientes salen en la página izquierda")
 check(ns.UI.wishRows[2]._shown and ns.UI.subText._text == "1 de 2 domesticadas", "los cumplidos salen tras los pendientes, con su contador")
+ns.UI.wishFilter = 2; ns.UI:Refresh()
+check(ns.UI.wishRows[1]._shown and not ns.UI.wishRows[2]._shown and ns.UI.wishViewFs._text:find("pendientes"), "el filtro de Pendientes oculta los cumplidos")
+ns.UI.wishFilter = 3; ns.UI:Refresh()
+check(ns.UI.wishRows[1]._shown and not ns.UI.wishRows[2]._shown and ns.UI.wishViewFs._text:find("cumplidos"), "el filtro de Cumplidos deja solo los cumplidos")
+ns.UI.wishFilter = 1; ns.UI:Refresh()
 local codex = ns:Codex()
 check(ns.UI.codexHead._text:find(" de 17 familias") and #ns.UI.codexCells == #codex.entries, "la derecha enseña el Códice con su contador")
 check(ns.UI.body._text:find("Doma 5 familias"), "y debajo, los retos")
@@ -504,6 +509,10 @@ check(#challenges == 6 and challenges[1].id == "families" and challenges[1].cur 
 huargo.tamed, huargo.beast = true, "Ressan the Needler"
 local cx = ns:Codex()
 check(cx.beastTamed == 1, "una bestia domada de la tabla cuenta en el Códice")
+check(#cx.zones >= 1 and cx.zones[1].tamed >= 1 and cx.zones[1].total >= cx.zones[1].tamed, "el Códice cuenta las bestias domadas por zona")
+huargo.skills = { { name = "Mordedura", rank = 2 }, { name = "Garra", rank = 1 } }
+check(ns:GetSkillsText(huargo) == "Habilidades: Mordedura 2 · Garra 1", "las habilidades de la mascota salen en una línea")
+huargo.skills = nil
 huargo.tamed, huargo.beast = nil, nil
 local ms = ns.charDB.milestones
 ns:CheckMilestones(huargo)

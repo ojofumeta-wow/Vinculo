@@ -173,6 +173,7 @@ function UI:Build()
     f:SetFrameStrata("HIGH")
     f:SetMovable(true)
     f:SetClampedToScreen(true)
+    f:SetScale(ns.db.opt.scale or 1)
     f:Hide()
     tinsert(UISpecialFrames, "VinculoFrame")
     _G.VinculoFrame = f
@@ -241,20 +242,28 @@ function UI:Build()
     self:BuildOptions()
 end
 
-local OPTION_LIST = {
-    { "toasts", L.OPT_TOASTS },
-    { "chatOnly", L.OPT_CHATONLY },
-    { "sound", L.OPT_SOUND },
-    { "weekly", L.OPT_WEEKLY },
-    { "anniv", L.OPT_ANNIV },
-    { "personality", L.OPT_PERSONALITY },
-    { "talk", L.OPT_TALK },
-    { "minimap", L.OPT_MINIMAP },
-    { "beastAlert", L.OPT_ALERT },
-    { "beastTip", L.OPT_TIP },
-    { "mapPins", L.OPT_PINS },
-    { "noanim", L.OPT_NOANIM },
+-- Ajustes en tres apartados (tinta, como las pestañas de la derecha); el último lleva además el tamaño del libro.
+local OPTION_GROUPS = {
+    { title = "OPT_TAB_ALERTS", list = {
+        { "toasts", L.OPT_TOASTS },
+        { "chatOnly", L.OPT_CHATONLY },
+        { "sound", L.OPT_SOUND },
+        { "weekly", L.OPT_WEEKLY },
+        { "anniv", L.OPT_ANNIV },
+        { "beastAlert", L.OPT_ALERT },
+    } },
+    { title = "OPT_TAB_PET", list = {
+        { "personality", L.OPT_PERSONALITY },
+        { "talk", L.OPT_TALK },
+        { "beastTip", L.OPT_TIP },
+        { "mapPins", L.OPT_PINS },
+    } },
+    { title = "OPT_TAB_BOOK", list = {
+        { "minimap", L.OPT_MINIMAP },
+        { "noanim", L.OPT_NOANIM },
+    }, scale = true },
 }
+local OPT_TOP, OPT_STEP = 30, 24
 
 -- Los ajustes son una página más del libro: ocupan la derecha en lugar de la pestaña.
 function UI:BuildOptions()
@@ -263,40 +272,98 @@ function UI:BuildOptions()
     o:SetFrameLevel(self.tabBox:GetFrameLevel() + 2)
     o:Hide()
 
-    local checks = {}
-    for i, opt in ipairs(OPTION_LIST) do
-        local cb = CreateFrame("CheckButton", nil, o, "UICheckButtonTemplate")
-        cb:SetSize(18, 18)
-        cb:SetPoint("TOPLEFT", -2, -2 - (i - 1) * 17.5) -- 12 ajustes caben en el recuadro de la página
-        -- Casilla dibujada a tinta (Media/CheckOff y CheckOn), sin las texturas del juego
-        for _, setter in ipairs({ "SetNormalTexture", "SetPushedTexture", "SetCheckedTexture", "SetDisabledCheckedTexture" }) do
-            pcall(cb[setter], cb, "")
-        end
-        -- Con "" el cliente puede dejar la marca amarilla de la plantilla (desplazada): se esconde del todo.
-        for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetCheckedTexture", "GetDisabledCheckedTexture" }) do
-            local ok, tex = pcall(cb[getter], cb)
-            if ok and type(tex) == "table" and tex.SetAlpha then tex:SetAlpha(0) end
-        end
-        cb.box = cb:CreateTexture(nil, "ARTWORK")
-        cb.box:SetAllPoints()
-        local label = ink(cb, "GameFontHighlight")
-        label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-        label:SetWidth(PAGE_W - 30)
-        label:SetJustifyH("LEFT")
-        label:SetText(opt[2])
-        cb:SetScript("OnClick", function(s)
-            ns.db.opt[opt[1]] = s:GetChecked() and true or false
-            s.box:SetTexture(MEDIA .. (s:GetChecked() and "CheckOn" or "CheckOff"))
-            UI:UpdateMinimap()
-            UI:Refresh()
-        end)
-        checks[opt[1]] = cb
+    local checks, groups, tabs = {}, {}, {}
+    local function selectGroup(n)
+        UI.optGroup = n
+        for i, g in ipairs(groups) do g:SetShown(i == n) end
+        for i, t in ipairs(tabs) do t:SetTextColor(unpack(i == n and INK or INK_SOFT)) end
     end
+
+    -- Tamaño de la ventana: - y + de 10 en 10 % (0.7 a 1.3), el mismo ajuste que /vinculo escala
+    local showScale
+    local function addScaleRow(parent, y)
+        local sizeLabel = ink(parent, "GameFontHighlight")
+        sizeLabel:SetPoint("TOPLEFT", 18, y - 2)
+        sizeLabel:SetText(L.OPT_SCALE)
+        local sizeValue = numeric(ink(parent, "GameFontHighlight"))
+        sizeValue:SetPoint("LEFT", sizeLabel, "RIGHT", 40, 0)
+        sizeValue:SetWidth(46)
+        sizeValue:SetJustifyH("CENTER")
+        showScale = function() sizeValue:SetText(math.floor((ns.db.opt.scale or 1) * 100 + 0.5) .. " %") end
+        local function stepScale(delta)
+            local v = math.floor(((ns.db.opt.scale or 1) + delta) * 10 + 0.5) / 10
+            if v < 0.7 or v > 1.3 then return end
+            ns.db.opt.scale = v
+            if self.frame then self.frame:SetScale(v) end
+            showScale()
+        end
+        for _, b in ipairs({ { "-", -0.1, -22 }, { "+", 0.1, 24 } }) do
+            local btn = CreateFrame("Button", nil, parent)
+            btn:SetSize(18, 18)
+            btn:SetPoint("CENTER", sizeValue, "CENTER", b[3] * 1.5, 0)
+            local fs = ink(btn, "GameFontNormal", INK_RED)
+            fs:SetPoint("CENTER")
+            fs:SetText(b[1])
+            btn:SetScript("OnEnter", function() fs:SetTextColor(unpack(INK)) end)
+            btn:SetScript("OnLeave", function() fs:SetTextColor(unpack(INK_RED)) end)
+            btn:SetScript("OnClick", function() stepScale(b[2]) end)
+        end
+    end
+
+    local x = 0
+    for gi, group in ipairs(OPTION_GROUPS) do
+        local tabBtn = CreateFrame("Button", nil, o)
+        local tfs = ink(tabBtn, "GameFontNormal", INK_SOFT)
+        tfs:SetPoint("LEFT")
+        tfs:SetText(L[group.title])
+        tabBtn:SetSize(tfs:GetStringWidth() + 4, 18)
+        tabBtn:SetPoint("TOPLEFT", x, -2)
+        x = x + tfs:GetStringWidth() + 22
+        tabBtn:SetScript("OnClick", function() selectGroup(gi) end)
+        tabs[gi] = tfs
+
+        local g = CreateFrame("Frame", nil, o)
+        g:SetAllPoints()
+        g:Hide()
+        groups[gi] = g
+        for i, opt in ipairs(group.list) do
+            local cb = CreateFrame("CheckButton", nil, g, "UICheckButtonTemplate")
+            cb:SetSize(18, 18)
+            cb:SetPoint("TOPLEFT", -2, -OPT_TOP - (i - 1) * OPT_STEP)
+            -- Casilla dibujada a tinta (Media/CheckOff y CheckOn), sin las texturas del juego
+            for _, setter in ipairs({ "SetNormalTexture", "SetPushedTexture", "SetCheckedTexture", "SetDisabledCheckedTexture" }) do
+                pcall(cb[setter], cb, "")
+            end
+            -- Con "" el cliente puede dejar la marca amarilla de la plantilla (desplazada): se esconde del todo.
+            for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetCheckedTexture", "GetDisabledCheckedTexture" }) do
+                local ok, tex = pcall(cb[getter], cb)
+                if ok and type(tex) == "table" and tex.SetAlpha then tex:SetAlpha(0) end
+            end
+            cb.box = cb:CreateTexture(nil, "ARTWORK")
+            cb.box:SetAllPoints()
+            local label = ink(cb, "GameFontHighlight")
+            label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+            label:SetWidth(PAGE_W - 30)
+            label:SetJustifyH("LEFT")
+            label:SetText(opt[2])
+            cb:SetScript("OnClick", function(s)
+                ns.db.opt[opt[1]] = s:GetChecked() and true or false
+                s.box:SetTexture(MEDIA .. (s:GetChecked() and "CheckOn" or "CheckOff"))
+                UI:UpdateMinimap()
+                UI:Refresh()
+            end)
+            checks[opt[1]] = cb
+        end
+        if group.scale then addScaleRow(g, -OPT_TOP - #group.list * OPT_STEP) end
+    end
+
     o:SetScript("OnShow", function()
+        if showScale then showScale() end
         for key, cb in pairs(checks) do
             cb:SetChecked(ns.db.opt[key])
             cb.box:SetTexture(MEDIA .. (ns.db.opt[key] and "CheckOn" or "CheckOff"))
         end
+        selectGroup(UI.optGroup or 1)
     end)
     self.options = o
 end
@@ -788,8 +855,32 @@ function UI:BuildPage()
     wishEmpty:SetJustifyH("LEFT")
     wishEmpty:SetText(L.WISH_EMPTY)
     self.wishEmpty = wishEmpty
-    local wishMore = ink(wp, "GameFontHighlightSmall", INK_SOFT)
-    self.wishMore = wishMore
+    -- "Página X de Y": un clic pasa a las siguientes bestias (si no, las que pasan de 6 no se verían)
+    local moreBtn = CreateFrame("Button", nil, wp)
+    moreBtn:SetSize(PAGE_W, 18)
+    local wishMore = ink(moreBtn, "GameFontHighlightSmall", INK_SOFT)
+    wishMore:SetPoint("LEFT")
+    moreBtn:SetScript("OnClick", function()
+        UI.wishOffset = (UI.wishOffset or 0) + 6
+        UI:Refresh()
+    end)
+    moreBtn:Hide()
+    self.wishMore, self.wishMoreBtn = wishMore, moreBtn
+
+    -- Filtro de la lista: todos / pendientes / cumplidos
+    local viewBtn = CreateFrame("Button", nil, wp)
+    viewBtn:SetSize(120, 18)
+    viewBtn:SetPoint("TOPRIGHT", wp, "TOPLEFT", LEFT_X + PAGE_W, -130)
+    local viewFs = ink(viewBtn, "GameFontNormalSmall", INK_RED)
+    viewFs:SetPoint("RIGHT")
+    viewBtn:SetScript("OnEnter", function() viewFs:SetTextColor(unpack(INK)) end)
+    viewBtn:SetScript("OnLeave", function() viewFs:SetTextColor(unpack(INK_RED)) end)
+    viewBtn:SetScript("OnClick", function()
+        UI.wishFilter = ((UI.wishFilter or 1) % 3) + 1
+        UI.wishOffset = 0
+        UI:Refresh()
+    end)
+    self.wishViewFs = viewFs
 
     -- Nota personal, escrita a mano sobre una línea al pie de la página izquierda
     local note = CreateFrame("EditBox", nil, page)
@@ -828,8 +919,14 @@ function UI:BuildPage()
     likes:SetJustifyH("LEFT")
     likes:SetWordWrap(false)
     self.likesText = likes
+    local skills = ink(page, "GameFontHighlightSmall", INK)
+    skills:SetPoint("TOPLEFT", likes, "BOTTOMLEFT", 0, -3)
+    skills:SetWidth(PAGE_W - 4)
+    skills:SetJustifyH("LEFT")
+    skills:SetWordWrap(false)
+    self.skillsText = skills
     note:ClearAllPoints()
-    note:SetPoint("TOPLEFT", likes, "BOTTOMLEFT", -2, -6)
+    note:SetPoint("TOPLEFT", skills, "BOTTOMLEFT", -2, -4)
     note:SetPoint("BOTTOMRIGHT", page, "TOPLEFT", LEFT_X + PAGE_W, -384)
 
     -- Acciones: palabras escritas a tinta, como las pestañas (un botón de plástico desentona en el libro)
@@ -1235,17 +1332,27 @@ function UI:RefreshWishes()
     for _, it in ipairs(pending) do list[#list + 1] = it end
     for _, it in ipairs(done) do list[#list + 1] = it end
     self.subText:SetText(L.WISH_COUNT:format(#done, #wishes))
-    self.wishEmpty:SetShown(#list == 0)
-    self.wishMore:Hide()
+    local mode = self.wishFilter or 1 -- 1 todos, 2 pendientes, 3 cumplidos
+    local shown = {}
+    for _, it in ipairs(list) do
+        if mode == 1 or (mode == 2) == (not it.w.done) then shown[#shown + 1] = it end
+    end
+    local offset = self.wishOffset or 0
+    if offset >= #shown then offset = 0 end
+    self.wishOffset = offset
+    self.wishViewFs:SetText(L.WISH_VIEW:format(L.WISH_VIEWS[mode]))
+    self.wishEmpty:SetShown(#shown == 0)
+    self.wishMoreBtn:Hide()
+    if #shown > WISH_ROWS then
+        local pages = math.ceil(#shown / WISH_ROWS)
+        self.wishMoreBtn:ClearAllPoints()
+        self.wishMoreBtn:SetPoint("TOPLEFT", self.wishPage, "TOPLEFT", LEFT_X, -158 - WISH_ROWS * WISH_STEP)
+        self.wishMore:SetText(L.WISH_PAGE:format(offset / WISH_ROWS + 1, pages))
+        self.wishMoreBtn:Show()
+    end
 
-    for n, it in ipairs(list) do
-        if n > WISH_ROWS then
-            self.wishMore:ClearAllPoints()
-            self.wishMore:SetPoint("TOPLEFT", self.wishPage, "TOPLEFT", LEFT_X, -158 - WISH_ROWS * WISH_STEP)
-            self.wishMore:SetText(L.WISH_MORE:format(#list - WISH_ROWS))
-            self.wishMore:Show()
-            break
-        end
+    for n = 1, math.min(WISH_ROWS, #shown - offset) do
+        local it = shown[offset + n]
         local row = self.wishRows[n]
         if not row then
             row = CreateFrame("Frame", nil, self.wishPage)
@@ -1338,6 +1445,14 @@ function UI:RefreshWishes()
         lines[#lines + 1] = (complete and "|cff2f5a12" or "|cff5a3a18") .. "· " .. L[CHALLENGE_TEXT[ch.id]]
             .. "  (" .. math.min(ch.cur, ch.goal) .. " / " .. ch.goal .. ")|r"
     end
+    if #codex.zones > 0 then
+        local zl = {}
+        for i = 1, math.min(#codex.zones, 6) do
+            local z = codex.zones[i]
+            zl[#zl + 1] = "· " .. z.name .. "  (" .. z.tamed .. " / " .. z.total .. ")"
+        end
+        lines[#lines + 1] = "\n|cff8a290d" .. L.CODEX_ZONES .. "|r\n|cff5a3a18" .. table.concat(zl, "\n") .. "|r"
+    end
     self.body:ClearAllPoints()
     self.body:SetPoint("TOPLEFT", 0, -(gridBottom + 26))
     self.body:SetPoint("RIGHT")
@@ -1359,6 +1474,7 @@ function UI:RefreshWishView()
     self.sinceText:SetText((self.listKeys and #self.listKeys > 0) and "" or L.NO_PETS_HINT)
     self.tagText:SetText("")
     self.likesText:SetText("")
+    self.skillsText:SetText("")
     self.wishTitle:Show()
     self.wishPage:Show()
     self.wishInput:Show()
@@ -1504,8 +1620,6 @@ function UI:Refresh()
     local sub = (pet.family or L.FAMILY_UNKNOWN) .. " · " .. L.LEVEL:format(pet.level or 1)
     -- Forever da "(Nivel de lealtad 1) Rebelde": el paréntesis sobra y ensancha la línea hasta el lomo del libro.
     if pet.loyaltyText then sub = sub .. " · " .. (pet.loyaltyText:gsub("^%b()%s*", "")) end
-    -- El ánimo solo vale para la que está contigo; el de las demás sería viejo.
-    if isActive and pet.happiness then sub = sub .. " · " .. HAPPY_COLOR[pet.happiness] .. L.HAPPINESS[pet.happiness] .. "|r" end
     self.subText:SetText(sub)
     -- Solo se dice "juntos desde" si la domesticaste con el addon activo; si no, la fecha es la de instalación.
     local since = (pet.tamed and L.TOGETHER_SINCE or L.DIARY_SINCE):format(date_(pet.created))
@@ -1519,6 +1633,8 @@ function UI:Refresh()
         tags[#tags + 1] = "|cff8a290d" .. L.FALLEN_TAG .. "|r"
     elseif isActive then
         tags[#tags + 1] = "|cff2f5a12" .. L.ACTIVE_TAG .. "|r"
+        -- El ánimo solo vale para la que está contigo (el de las demás sería viejo). Va en esta línea, que tiene sitio.
+        if pet.happiness then tags[#tags + 1] = HAPPY_COLOR[pet.happiness] .. L.HAPPINESS[pet.happiness] .. "|r" end
     else
         -- Fuera de tu lado: en el establo, o despedida un rato (aún no pasó por el establo).
         tags[#tags + 1] = "|cff7a6a50" .. (pet.stabled and L.STABLED_TAG or L.RESTING_TAG) .. "|r"
@@ -1534,6 +1650,7 @@ function UI:Refresh()
     end
     self.tagText:SetText(table.concat(tags, "  ·  "))
     self.likesText:SetText(table.concat(ns:GetLikes(pet), "  ·  "))
+    self.skillsText:SetText(ns:GetSkillsText(pet) or "")
 
     -- Estadísticas
     local s = pet.stats
@@ -1611,6 +1728,8 @@ function ns:ExportText(pet)
     if pet.note and pet.note ~= "" then lines[#lines + 1] = pet.note; lines[#lines + 1] = "" end
     local likes = self:GetLikes(pet)
     if #likes > 0 then lines[#lines + 1] = table.concat(likes, " · "); lines[#lines + 1] = "" end
+    local skillsLine = self:GetSkillsText(pet)
+    if skillsLine then lines[#lines + 1] = skillsLine; lines[#lines + 1] = "" end
     for i = 1, #pet.timeline do
         local entry = pet.timeline[i]
         lines[#lines + 1] = date_(entry.t) .. "  " .. plain(self:FormatEvent(entry))

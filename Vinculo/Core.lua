@@ -21,6 +21,7 @@ local DEFAULT_OPTIONS = {
     noanim = false,     -- sin animaciones (más ligero)
     beastAlert = true,  -- avisar al ver una bestia de tu lista de deseos
     beastTip = true,    -- datos de la bestia en su tooltip
+    scale = 1,          -- tamaño de la ventana del diario (0.7 a 1.3)
     mapPins = true,     -- marcas de tus bestias deseadas en el mapa del mundo
 }
 local PREY_MILESTONES = { [10] = true, [25] = true, [50] = true, [100] = true, [250] = true, [500] = true, [1000] = true }
@@ -107,6 +108,27 @@ local function readHappiness()
     -- La global es la de Classic Era (versión de prueba).
     local h = safe((C_PetInfo and C_PetInfo.GetPetHappiness) or GetPetHappiness)
     if type(h) == "number" and h >= 1 and h <= 3 then return h end
+end
+
+-- Habilidades con rango del libro de la mascota (Mordedura 2, Garra 1...). Los botones de mando no tienen rango.
+-- shortcut: se lee el rango del texto "Rango N" del cliente (esES/enUS); en otro idioma no sale ninguno.
+local function readSkills()
+    local SB = C_SpellBook
+    if not (SB and SB.GetSpellBookItemName and SB.GetSpellBookItemInfo) then return end
+    local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet or "pet"
+    local sub = (C_Spell and C_Spell.GetSpellSubtext) or GetSpellSubtext
+    local out = {}
+    for i = 1, 40 do
+        local ok, name = pcall(SB.GetSpellBookItemName, i, bank)
+        if not ok or type(name) ~= "string" or name == "" then break end
+        local _, info = pcall(SB.GetSpellBookItemInfo, i, bank)
+        local id = type(info) == "table" and info.spellID
+        local okR, text = pcall(sub, id)
+        local rank = okR and type(text) == "string" and tonumber(text:match("%d+"))
+        if rank then out[#out + 1] = { name = name, rank = rank } end
+    end
+    table.sort(out, function(a, b) return a.name < b.name end)
+    return #out > 0 and out or nil
 end
 
 local function readTraining()
@@ -432,6 +454,7 @@ function ns:RefreshPet()
         pet.happiness = happiness
     end
     pet.trainingFree, pet.trainingTotal = readTraining()
+    if not inCombat then pet.skills = readSkills() or pet.skills end
     pet.lastSeen = time()
     -- Una mascota muerta puede seguir existiendo; la caída queda pendiente hasta revivirla.
     if not safe(UnitIsDead, "pet") then pet.pendingFall = nil end
@@ -731,6 +754,16 @@ SlashCmdList.VINCULO = function(msg)
         ns.UI:Week()
     elseif msg == "exportar" or msg == "export" then
         ns.UI:Export(ns:GetPet(ns.activeKey or ns.lastKey))
+    elseif msg:match("^escala") or msg:match("^scale") then
+        local v = tonumber(msg:match("[%d%.,]+"))
+        v = v and tonumber((tostring(v):gsub(",", ".")))
+        if not v or v < 0.7 or v > 1.3 then
+            ns:Print(L.SCALE_USAGE:format(db.opt.scale or 1))
+        else
+            db.opt.scale = v
+            if ns.UI.frame and not inCombat then ns.UI.frame:SetScale(v) end
+            ns:Print(L.SCALE_SET:format(v))
+        end
     elseif msg == "aviso" or msg == "test" then
         -- Enseña el aviso de logro con un logro de prueba (para ver cómo queda).
         local pet = ns:GetPet(ns.activeKey or ns.lastKey)
