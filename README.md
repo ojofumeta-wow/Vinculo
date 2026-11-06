@@ -2,7 +2,7 @@
 
 A leather-bound journal for your hunter pet in **World of Warcraft: Forever**. A page for every pet you have had: the day you met, the fights you survived, the zones you walked together, 21 achievements and a dated story. Plus a bestiary that shows you on the map where to tame your next beast.
 
-**[Download on CurseForge](https://www.curseforge.com/wow/addons/vinculo-pet-journal)** · Free · MIT licensed · English and Spanish
+**[Download on CurseForge](https://www.curseforge.com/wow/addons/vinculo-pet-journal)** · Free · All rights reserved · English and Spanish
 
 ![Your pet's journal](docs/img/01-ficha-historia.jpg)
 
@@ -43,12 +43,12 @@ node _luatest/run.js
 The addon is in `Vinculo/`. Load order: Locale → Data → Zones → Skills → Foods → Core → Achievements → Extras → UI.
 
 ## Licence
-MIT, see [LICENSE](LICENSE). Fonts: IM Fell English and Caveat, SIL Open Font License.
+All rights reserved, see [LICENSE](LICENSE). Fonts: IM Fell English and Caveat, SIL Open Font License.
 
 ---
 
 # Español
 
-**Vínculo** es un diario para la mascota del cazador en **WoW: Forever**: historia, estadísticas, 21 logros, viajes por continente y un bestiario con autocompletar que te marca en el mapa dónde domesticar tu próxima bestia. Gratis, licencia MIT.
+**Vínculo** es un diario para la mascota del cazador en **WoW: Forever**: historia, estadísticas, 21 logros, viajes por continente y un bestiario con autocompletar que te marca en el mapa dónde domesticar tu próxima bestia. Gratis, todos los derechos reservados.
 
 Instálalo desde [CurseForge](https://www.curseforge.com/wow/addons/vinculo-pet-journal) o copia la carpeta `Vinculo` a `_forever_/Interface/AddOns/`. Ábrelo con `/vinculo`. Si ves un error, abre un *issue* con el texto exacto del error de Lua.

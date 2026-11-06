@@ -119,7 +119,7 @@ Activa el **carrusel** en la página de imágenes y ordénalas así (lo más imp
 En la pestaña General, añade un enlace (Discord o GitHub) para que reporten errores: la guía de CurseForge lo recomienda.
 
 ## Pestaña "License"
-**MIT License**: cualquiera puede usar y modificar el código, siempre que mantenga tu nombre. Si prefieres que nadie lo reutilice, elige **All Rights Reserved**.
+**All Rights Reserved**: nadie puede reutilizar el código sin tu permiso.
 
 ## Al subir el archivo
 Sube un `.zip` que contenga la carpeta `Vinculo` (sin `_luatest`). Marca como versión del juego **WoW Forever (1.60.1)** y tipo de lanzamiento **Beta** hasta que lo hayas probado.
