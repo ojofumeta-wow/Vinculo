@@ -997,10 +997,12 @@ local EVENT_ICON = {
     EV_ACHIEVEMENT = "Spell_Holy_DivineIntervention", EV_LEVEL = "Ability_Hunter_BeastMastery",
     EV_ZONE = "INV_Misc_Map_01", EV_DUNGEON = "INV_Misc_Map02", EV_FALL = "INV_Misc_Bone_HumanSkull_01",
     EV_REVIVE = "Ability_Hunter_BeastSoothe", EV_RENAMED = "INV_Scroll_03", EV_LOYALTY = "Ability_Hunter_BeastTaming",
-    EV_ABANDONED = "INV_Misc_Bone_HumanSkull_01",
+    EV_ABANDONED = "INV_Misc_Bone_HumanSkull_01", EV_FALL_FOE = "INV_Misc_Bone_HumanSkull_01",
+    EV_MILESTONE = "Spell_Holy_DivineIntervention", EV_RECORD = "Ability_Hunter_BeastMastery",
+    EV_EPITAPH = "INV_Scroll_03",
 }
 local EVENT_BIG = {
-    EV_ABANDONED = true,
+    EV_ABANDONED = true, EV_MILESTONE = true, EV_EPITAPH = true,
     EV_TAMED = true, EV_FIRST_SEEN = true, EV_STABLE_FOUND = true, EV_BOSS = true,
     EV_ANNIVERSARY = true, EV_WISH_DONE = true, EV_ACHIEVEMENT = true,
 }
@@ -1214,6 +1216,7 @@ local function codexCell(parent)
             GameTooltip:SetText(en.name)
             if en.since and en.since > 0 then GameTooltip:AddLine(L.CODEX_TAMED:format(date_(en.since)), GREEN[1], GREEN[2], GREEN[3]) end
             if en.kills > 0 then GameTooltip:AddLine(L.CODEX_HUNTED:format(en.kills), 1, 1, 1) end
+            if (en.beastTotal or 0) > 0 then GameTooltip:AddLine(L.CODEX_BEASTS:format(en.beastTamed, en.beastTotal), 1, 1, 1) end
         end
         GameTooltip:Show()
     end)
@@ -1221,7 +1224,7 @@ local function codexCell(parent)
     return cell
 end
 
-local CHALLENGE_TEXT = { families = "CH_FAMILIES", pets = "CH_PETS", prey = "CH_PREY", types = "CH_TYPES", classic = "CH_CLASSIC" }
+local CHALLENGE_TEXT = { families = "CH_FAMILIES", pets = "CH_PETS", prey = "CH_PREY", types = "CH_TYPES", classic = "CH_CLASSIC", beasts = "CH_BEASTS" }
 
 function UI:RefreshWishes()
     local wishes = ns:GetWishes()

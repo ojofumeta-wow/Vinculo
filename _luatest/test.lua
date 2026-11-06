@@ -498,7 +498,18 @@ byKey = {}
 for _, e in ipairs(ns:Codex().entries) do byKey[e.key] = e end
 check(byKey.Bat.state == "hunted" and byKey.Bat.kills == 1, "una familia derrotada pero no domesticada sale como cazada")
 local challenges = ns:Challenges()
-check(#challenges == 5 and challenges[1].id == "families" and challenges[1].cur >= 2, "los retos se calculan con lo que ya guarda el diario")
+check(#challenges == 6 and challenges[1].id == "families" and challenges[1].cur >= 2, "los retos se calculan con lo que ya guarda el diario")
+
+-- 0.1.5: bestias domadas, hitos, epitafio y tope de presas
+huargo.tamed, huargo.beast = true, "Ressan the Needler"
+local cx = ns:Codex()
+check(cx.beastTamed == 1, "una bestia domada de la tabla cuenta en el Códice")
+huargo.tamed, huargo.beast = nil, nil
+local ms = ns.charDB.milestones
+ns:CheckMilestones(huargo)
+check(ns.charDB.milestones.FIRST, "el primer hito se apunta una sola vez")
+ns:Epitaph(huargo)
+check(huargo.timeline[#huargo.timeline].e == "EV_EPITAPH", "el epitafio queda en la historia")
 
 -- Sugerencias de la caja de deseos
 local sugg = ns:WishSuggestions(1, "murci")
@@ -736,7 +747,7 @@ check(nAfter == nPets and not huargo.retired and ns.activeKey == huargo.key, "un
 ns.activeKey = huargo.key
 ns:PetAbandoned()
 ns.UI.selectedKey = huargo.key; ns.UI:Refresh()
-check(huargo.abandoned and huargo.retired and ns.activeKey == nil and huargo.timeline[#huargo.timeline].e == "EV_ABANDONED", "abandonar la deja en el recuerdo con su suceso")
+check(huargo.abandoned and huargo.retired and ns.activeKey == nil and huargo.timeline[#huargo.timeline - 1].e == "EV_ABANDONED" and huargo.timeline[#huargo.timeline].e == "EV_EPITAPH", "abandonar la deja en el recuerdo con su suceso")
 check(ns.UI.tagText._text:find("Abandonada") and not ns.UI.tagText._text:find("En el recuerdo"), "la ficha dice Abandonada")
 S.pet = { guid = huargo.key, name = huargo.name, family = huargo.family, level = huargo.level }
 fire("UNIT_PET", "player") -- la misma mascota aún existe un instante tras abandonarla

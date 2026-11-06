@@ -126,8 +126,15 @@ local function readPrey()
     return name, type(kind) == "string" and kind or nil, type(family) == "string" and family or nil
 end
 
+-- Las listas por nombre (presas, némesis) se cortan en MAX_NAMES nombres distintos para que VinculoDB no crezca sin fin.
+local MAX_NAMES = 300
 local function count(pet, field, name)
     pet[field] = pet[field] or {}
+    if not pet[field][name] then
+        local n = 0
+        for _ in pairs(pet[field]) do n = n + 1 end
+        if n >= MAX_NAMES then return 0 end
+    end
     pet[field][name] = (pet[field][name] or 0) + 1
     return pet[field][name]
 end
@@ -228,9 +235,16 @@ function ns:FormatEvent(entry)
     return ok and text or fmt
 end
 
+-- Epitafio: un resumen de la vida de la mascota, al pasar al recuerdo o al dejarla ir.
+function ns:Epitaph(pet)
+    local s = pet.stats
+    self:Log(pet, "EV_EPITAPH", pet.name, ns.FormatTime(s.timeTogether), s.victories, s.falls)
+end
+
 function ns:SetRetired(pet, retired)
     pet.retired = retired or nil
     self:Log(pet, retired and "EV_RETIRED" or "EV_UNRETIRED", pet.name)
+    if retired then self:Epitaph(pet) end
     self:Changed()
 end
 
@@ -240,6 +254,7 @@ function ns:PetAbandoned()
     if not pet or pet.abandoned then return end
     pet.abandoned, pet.retired = true, true
     self:Log(pet, "EV_ABANDONED", pet.name)
+    self:Epitaph(pet)
     if self.activeKey == pet.key then self.activeKey = nil end
     self:Changed()
 end
@@ -307,8 +322,14 @@ local function recordFall(pet)
     pet.pendingFall = true
     pet.stats.falls = pet.stats.falls + 1
     pet.stats.streak = 0
-    if combat and combat.prey then count(pet, "nemesis", combat.prey) end
-    ns:Log(pet, "EV_FALL", pet.name, currentZone())
+    local foe = combat and combat.prey
+    if foe then count(pet, "nemesis", foe) end
+    pet.lastFall = { t = time(), zone = currentZone(), foe = foe } -- la lápida: dónde y ante quién
+    if foe then
+        ns:Log(pet, "EV_FALL_FOE", pet.name, currentZone(), foe)
+    else
+        ns:Log(pet, "EV_FALL", pet.name, currentZone())
+    end
 end
 
 -- Lee la mascota actual y actualiza su ficha. Fuera de combate es fiable;
@@ -367,8 +388,12 @@ function ns:RefreshPet()
         pet.loyalty = loyalty
         local justTamed = (GetTime() - lastTameCast) < 120
         pet.tamed = justTamed or nil
+        pet.beast = justTamed and name or nil -- la especie domada (el nombre de la ficha puede cambiar si la renombras)
         self:Log(pet, justTamed and "EV_TAMED" or "EV_FIRST_SEEN", name, pet.metZone)
-        if justTamed then self:CompleteWish(pet) end
+        if justTamed then
+            self:CompleteWish(pet)
+            if self.CheckMilestones then self:CheckMilestones(pet) end
+        end
         greet = justTamed and "tamed" or "hello"
     elseif pet.abandoned then
         -- La mascota abandonada aún existe un instante tras soltarla: no se reactiva.
@@ -579,7 +604,16 @@ function events.PLAYER_REGEN_ENABLED()
     if c then
         local pet = ns:GetPet(c.key)
         if pet then
-            pet.stats.timeCombat = pet.stats.timeCombat + (GetTime() - c.start)
+            local fight = GetTime() - c.start
+            pet.stats.timeCombat = pet.stats.timeCombat + fight
+            -- Récord: el combate más largo. Se anota en la historia solo si pasa de 2 min y mejora 30 s el último anotado.
+            if fight > (pet.stats.bestFight or 0) then
+                pet.stats.bestFight = fight
+                if fight >= 120 and fight >= (pet.stats.loggedFight or 0) + 30 then
+                    pet.stats.loggedFight = fight
+                    ns:Log(pet, "EV_RECORD", pet.name, ns.FormatTime(fight))
+                end
+            end
             if not c.fell and petExists() and not safe(UnitIsDead, "pet")
                 and not safe(UnitIsDeadOrGhost, "player") then
                 local s = pet.stats

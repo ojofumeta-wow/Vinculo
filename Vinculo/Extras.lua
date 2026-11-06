@@ -931,6 +931,39 @@ function ns:KeepInCodex(pet)
     for fam, n in pairs(pet.preyFamilies or {}) do keep.preyFamilies[fam] = (keep.preyFamilies[fam] or 0) + n end
     for _, n in pairs(pet.prey or {}) do keep.prey = keep.prey + n end
     for t in pairs(pet.preyTypes or {}) do keep.preyTypes[t] = true end
+    if pet.tamed then
+        keep.beasts = keep.beasts or {}
+        keep.beasts[fold(pet.beast or pet.name or "")] = true
+    end
+end
+
+-- Hitos de la historia: se apuntan una sola vez por personaje, en la ficha de la mascota recién domada.
+local MILESTONES = {
+    { id = "PETS_5",  ok = function(c) return c.pets >= 5 end },
+    { id = "PETS_10", ok = function(c) return c.pets >= 10 end },
+    { id = "FAM_5",   ok = function(c) return c.baseTamed + c.extraTamed >= 5 end },
+    { id = "FAM_10",  ok = function(c) return c.baseTamed + c.extraTamed >= 10 end },
+    { id = "FAM_ALL", ok = function(c) return c.baseTamed >= c.baseTotal end },
+    { id = "BEAST_10", ok = function(c) return c.beastTamed >= 10 end },
+    { id = "BEAST_25", ok = function(c) return c.beastTamed >= 25 end },
+}
+
+function ns:CheckMilestones(pet)
+    local done = ns.charDB.milestones
+    if not done then done = {}; ns.charDB.milestones = done end
+    if not done.FIRST then
+        done.FIRST = time()
+        self:Log(pet, "EV_MILESTONE", L.MS_FIRST)
+        return
+    end
+    local codex = self:Codex()
+    for _, m in ipairs(MILESTONES) do
+        if not done[m.id] and m.ok(codex) then
+            done[m.id] = time()
+            self:Log(pet, "EV_MILESTONE", L.MS[m.id])
+            self:Print(L.MS[m.id])
+        end
+    end
 end
 
 -- Todo lo que cuenta el Códice, sumando todas las mascotas del diario.
@@ -953,13 +986,29 @@ function ns:Codex()
         end
     end
 
+    -- Bestias concretas domadas (de la tabla propia), por familia.
+    local beasts = {}
+    for k in pairs(keep.beasts or {}) do beasts[k] = true end
+    for _, pet in pairs(ns.charDB.pets) do
+        if pet.tamed then beasts[fold(pet.beast or pet.name or "")] = true end
+    end
+    local bTotal, bTamed, beastTamed = {}, {}, 0
+    for _, b in ipairs(ns.BEASTS or {}) do
+        bTotal[b.fam] = (bTotal[b.fam] or 0) + 1
+        if beasts[fold(b.en)] or (b.es and beasts[fold(b.es)]) then
+            bTamed[b.fam] = (bTamed[b.fam] or 0) + 1
+            beastTamed = beastTamed + 1
+        end
+    end
+
     local entries, isBase, baseTamed = {}, {}, 0
     for _, f in ipairs(ns.FAMILIES) do
         isBase[f.key] = true
         local state = tamed[f.key] and "tamed" or (kills[f.key] and "hunted" or "unknown")
         if state == "tamed" then baseTamed = baseTamed + 1 end
         entries[#entries + 1] = { key = f.key, name = familyName(f), icon = f.iconPath, state = state,
-            kills = kills[f.key] or 0, since = tamed[f.key] }
+            kills = kills[f.key] or 0, since = tamed[f.key],
+            beastTamed = bTamed[f.key] or 0, beastTotal = bTotal[f.key] or 0 }
     end
     -- Familias que no están entre las 17 (las de MoP o con otro nombre): salen en cuanto aparecen
     local extra, extraTamed = {}, 0
@@ -974,7 +1023,7 @@ function ns:Codex()
             kills = kills[k] or 0, since = tamed[k] }
     end
     return { entries = entries, baseTamed = baseTamed, baseTotal = #ns.FAMILIES, extraTamed = extraTamed,
-        pets = pets, prey = prey, typeCount = typeCount }
+        pets = pets, prey = prey, typeCount = typeCount, beastTamed = beastTamed }
 end
 
 -- Retos: objetivos propios que se calculan con lo que ya guarda el diario.
@@ -986,5 +1035,6 @@ function ns:Challenges(codex)
         { id = "prey", cur = codex.prey, goal = 100 },
         { id = "types", cur = codex.typeCount, goal = 5 },
         { id = "classic", cur = codex.baseTamed, goal = codex.baseTotal },
+        { id = "beasts", cur = codex.beastTamed, goal = 10 },
     }
 end

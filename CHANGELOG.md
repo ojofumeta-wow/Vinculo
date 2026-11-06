@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.5
+
+### Added
+- Codex counts the individual beasts you tame (tooltip per family, new challenge "Tame 10 different beasts").
+- Automatic milestones in the story: first pet, 5 and 10 pets, 5 and 10 families, all classic families, 10 and 25 beasts.
+- Longest-fight record, a fall now remembers who it fell against, and an epitaph when a pet moves to memory or is let go.
+
+### Changed
+- Prey and nemesis lists are capped at 300 names per pet so the save file stops growing.
+
+## 0.1.5 (español)
+
+### Añadido
+- El Códice cuenta las bestias concretas que domas (tooltip por familia, reto nuevo "Doma 10 bestias distintas").
+- Hitos automáticos en la historia: primera mascota, 5 y 10 mascotas, 5 y 10 familias, todas las clásicas, 10 y 25 bestias.
+- Récord del combate más largo, las caídas recuerdan ante quién cayó, y un epitafio al pasar al recuerdo o dejar ir a la mascota.
+
+### Cambiado
+- Las listas de presas y némesis se limitan a 300 nombres por mascota para que el archivo de guardado no crezca sin parar.
+
 ## 0.1.4
 
 ### Added

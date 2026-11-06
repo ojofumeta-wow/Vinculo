@@ -96,6 +96,10 @@ Estado de las APIs según esa fuente (declarada no significa probada en el juego
 - [x] Quitar el registro temporal de depuración (`/vinculo debug`, líneas `dbg`, "alimentar: clic").
 - [x] Textos en inglés en la tarjeta y el resumen: revisados por longitud (todos iguales o más cortos que en español salvo "achievements", que cabe en 94 px; título con ajuste automático). Sin ver en el juego.
 
+### Versión 0.1.5 (6 de noviembre de 2026, sin ver en el juego)
+- [x] Bestias domadas en el Códice + reto, hitos de la historia, récord de combate, lápida con rival, epitafio, tope de 300 presas.
+- [ ] Descartado: comida favorita (el juego no da el objeto comido ni la felicidad). Pendiente: porcentaje por zona, ruta de habilidades (si el libro de la mascota funciona en Forever).
+
 ### Ideas para después (no pedidas todavía)
 - Catálogo visual del Bestiario con modelos 3D (empezar con una ventana de prueba de 12–24 bestias; datos de volcados CMaNGOS/AzerothCore, ojo con las licencias).
 - Burbuja de habla de la mascota (prototipo anclado a la placa de nombre).
